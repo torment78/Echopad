@@ -66,7 +66,7 @@ Open **Settings → MIDI**.
 
 Click the **Edit** button in the top bar.
 
-![Edit button](images/edit-bar-pad.png)
+![Edit button](images/edit-per-pad.png)
 
 Edit Mode enables configuration instead of playback.
 
