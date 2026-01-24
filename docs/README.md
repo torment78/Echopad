@@ -1,8 +1,8 @@
 # 🎛️ Echopad
 
-Echopad is a real-time audio pad sampler designed for **live performance, streaming, and rapid audio interaction**.
+Echopad is a real-time audio pad sampler designed for **live performance, streaming and rapid audio interaction**.
 
-It focuses on speed, predictability, and minimal UI friction — no timelines, no tracks, no DAW-style complexity.
+It focuses on speed predictability and minimal UI friction - no timelines, no tracks, no DAW-style complexity.
 
 ---
 
@@ -13,9 +13,9 @@ Echopad is built around a **4×4 pad grid**, where each pad represents an indepe
 Each pad can:
 - Play a loaded audio file
 - Capture live audio using Echo mode
-- Be triggered via mouse, keyboard, or MIDI
+- Be triggered via mouse, keyboard or MIDI
 - Provide MIDI LED feedback
-- Store its own trim, input source, and behavior
+- Store its own trim, input source and behavior
 
 ---
 
@@ -33,7 +33,7 @@ The interface consists of:
 ## 🔄 Pad States
 
 Pads are state-driven.  
-Visuals, behavior, and MIDI feedback all follow the current pad state.
+Visuals, behavior and MIDI feedback all follow the current pad state.
 
 - **Empty** – no audio, no echo
 - **Armed** – waiting to capture live audio
