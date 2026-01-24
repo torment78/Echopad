@@ -1,0 +1,49 @@
+name: Build + Release (tag)
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Restore NuGet packages
+        run: dotnet restore
+
+      # IMPORTANT: publish the PROJECT (.csproj), not the .slnx
+      # Adjust this path if your csproj is not in MidiVmRunner\MidiVmRunner.csproj
+      - name: Publish MidiVmRunner
+        run: dotnet publish `
+              MidiVmRunner\MidiVmRunner.csproj `
+              -c Release `
+              -r win-x64 `
+              --self-contained true `
+              -o "./publish"
+
+      - name: Zip publish folder
+        run: powershell Compress-Archive -Path publish\* -DestinationPath "MidiVmRunner-${{ github.ref_name }}.zip" -Force
+
+      - name: Create GitHub Release and upload asset
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: MidiVmRunner ${{ github.ref_name }}
+          files: MidiVmRunner-${{ github.ref_name }}.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

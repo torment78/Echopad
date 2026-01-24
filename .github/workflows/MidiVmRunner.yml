@@ -1,0 +1,44 @@
+name: Build Echopad Release
+
+on:
+  push:
+    branches:
+      - master
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Restore NuGet packages
+        run: dotnet restore
+
+      # ✅ IMPORTANT:
+      # publish the PROJECT, not the slnx
+      - name: Publish Echopad
+        run: dotnet publish `
+              Echopad.app\Echopad.app.csproj `
+              -c Release `
+              -o "./publish"
+
+      - name: Zip publish folder
+        run: powershell Compress-Archive -Path publish\* -DestinationPath Echopad.zip -Force
+
+      - name: Create GitHub Release and upload asset
+        uses: softprops/action-gh-release@v2
+        with:
+          files: Echopad.zip
+          tag_name: snapshot-latest
+          name: snapshot_latest
+          body: Automated snapshot build for latest commit
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
