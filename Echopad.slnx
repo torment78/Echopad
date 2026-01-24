@@ -1,0 +1,27 @@
+<Solution>
+  <Folder Name="/docs/">
+    <File Path="docs/README.md" />
+    <File Path="docs/SETUP.md" />
+  </Folder>
+  <Folder Name="/docs/images/">
+    <File Path="docs/images/edit-per-pad-active.png" />
+    <File Path="docs/images/edit-per-pad-window-pick-audio-input.png" />
+    <File Path="docs/images/edit-per-pad-window-pick-echo-mode.png" />
+    <File Path="docs/images/edit-per-pad-window-pick-folder-mode.png" />
+    <File Path="docs/images/edit-per-pad.png" />
+    <File Path="docs/images/pad-grid.png" />
+    <File Path="docs/images/right-click-pad.png" />
+    <File Path="docs/images/setup-audio-input.png" />
+    <File Path="docs/images/setup-audio-monitoring.png" />
+    <File Path="docs/images/setup-audio-output.png" />
+    <File Path="docs/images/setup-midi-input.png" />
+    <File Path="docs/images/setup-midi-return.png" />
+    <File Path="docs/images/trim-in.png" />
+    <File Path="docs/images/trim-out.png" />
+  </Folder>
+  <Project Path="Echopad.App/Echopad.App.csproj" Id="5c2c3170-5be5-4fb9-81a8-685973dee8d8" />
+  <Project Path="Echopad.Audio/Echopad.Audio.csproj" />
+  <Project Path="Echopad.Core/Echopad.Core.csproj" />
+  <Project Path="Echopad.IO/Echopad.IO.csproj" />
+  <Project Path="Echopad.Midi/Echopad.Midi.csproj" />
+</Solution>

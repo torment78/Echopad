@@ -1,0 +1,42 @@
+C:.
+|   Echopad.slnx
+|   tree.txt
+|
++---Echopad.App
+|   |   App.xaml
+|   |   App.xaml.cs
+|   |   AssemblyInfo.cs
+|   |   Echopad.App.csproj
+|   |   Echopad.App.csproj.user
+|   |   MainViewModel.cs
+|   |   MainWindow.xaml
+|   |   MainWindow.xaml.cs
+|   |
+|   \---UI
+|       +---Behaviors
+|       |       PadTrimWheelBehavior.cs
+|       |
+|       \---Styles
+|               PadStyles.xaml
+|
++---Echopad.Audio
+|   |   AudioEngine.cs
+|   |   Echopad.Audio.csproj
+|   |   IAudioEngine.cs
+|
++---Echopad.Core
+|   |   ClipMod.cs
+|   |   Echopad.Core.csproj
+|   |   PadModel.cs
+|   |   PadState.cs
+|   |
+|   \---Controllers
+|           PadActionController.cs
+|
++---Echopad.IO
+|   |   Class1.cs
+|   |   Echopad.IO.csproj
+|
+\---Echopad.Midi
+    |   Class1.cs
+    |   Echopad.Midi.csproj

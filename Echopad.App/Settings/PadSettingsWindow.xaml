@@ -1,0 +1,456 @@
+﻿<Window
+    x:Class="Echopad.App.Settings.PadSettingsWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:local="clr-namespace:Echopad.App.Settings"
+    mc:Ignorable="d"
+    Title="Pad Settings"
+    MinWidth="690"
+    MinHeight="995"
+    Width="690"
+    Height="995"
+    WindowStartupLocation="CenterOwner"
+    Background="{DynamicResource BgBrush}"
+    Foreground="{DynamicResource TextBrush}">
+
+    <Window.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
+        <local:IntEqualsConverter x:Key="IntEqualsConverter" />
+
+        <!-- ===== Palette (GRAY THEME) ===== -->
+        <SolidColorBrush x:Key="BgBrush" Color="#212121"/>
+        <SolidColorBrush x:Key="PanelBrush" Color="#212121"/>
+        <SolidColorBrush x:Key="ControlBgBrush" Color="#181818"/>
+        <SolidColorBrush x:Key="ControlBorderBrush" Color="#303030"/>
+        <SolidColorBrush x:Key="ControlHoverBrush" Color="#242424"/>
+        <SolidColorBrush x:Key="ControlPressedBrush" Color="#1D1D1D"/>
+        <SolidColorBrush x:Key="TextBrush" Color="#EAEAEA"/>
+        <SolidColorBrush x:Key="MutedTextBrush" Color="#B8B8B8"/>
+
+        <Style TargetType="{x:Type GroupBox}">
+            <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource ControlBorderBrush}"/>
+            <Setter Property="Background" Value="{StaticResource PanelBrush}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+        </Style>
+
+        <Style TargetType="{x:Type TextBlock}">
+            <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
+        </Style>
+
+        <Style TargetType="{x:Type CheckBox}">
+            <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
+        </Style>
+
+        <Style TargetType="{x:Type RadioButton}">
+            <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
+        </Style>
+
+        <Style TargetType="{x:Type TextBox}">
+            <Setter Property="Background" Value="{StaticResource ControlBgBrush}"/>
+            <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource ControlBorderBrush}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="6"/>
+        </Style>
+
+        <!-- Small up/down buttons for numeric nudges -->
+        <Style x:Key="SpinButtonStyle" TargetType="{x:Type RepeatButton}">
+            <Setter Property="Width" Value="26"/>
+            <Setter Property="Height" Value="16"/>
+            <Setter Property="Margin" Value="4,0,0,0"/>
+            <Setter Property="Background" Value="{StaticResource ControlBgBrush}"/>
+            <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource ControlBorderBrush}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="{x:Type RepeatButton}">
+                        <Border CornerRadius="4"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}">
+                            <ContentPresenter HorizontalAlignment="Center"
+                                              VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter Property="Background" Value="{StaticResource ControlHoverBrush}"/>
+                                <Setter Property="BorderBrush" Value="#3A4D68"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter Property="Background" Value="{StaticResource ControlPressedBrush}"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Opacity" Value="0.45"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Window.Resources>
+
+    <Grid Margin="16">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- HEADER -->
+        <TextBlock Text="Per-Pad Settings"
+                   FontSize="22"
+                   FontWeight="Bold"
+                   Margin="0,0,0,16"/>
+
+        <!-- CONTENT -->
+        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+            <StackPanel>
+
+                <!-- AUDIO FILE -->
+                <GroupBox Header="Audio File" Margin="0,0,0,12" Height="130">
+                    <Grid Margin="12">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+
+                        <TextBox Grid.Row="0" Grid.Column="0"
+                                 Text="{Binding ClipPath}"
+                                 IsReadOnly="True"/>
+
+                        <Button Grid.Row="0" Grid.Column="1"
+                                Margin="8,0,0,0"
+                                Content="Browse…"
+                                Style="{StaticResource EchopadTopButtonStyle}"
+                                Click="BrowseAudio_Click"/>
+
+                        <TextBlock Grid.Row="1" Grid.Column="0"
+                                   Margin="0,8,0,0"
+                                   Opacity="0.85"
+                                   Text="{Binding DurationText}" />
+                    </Grid>
+                </GroupBox>
+
+                <!-- TRIM -->
+                <GroupBox Header="Trim" Margin="0,0,0,12">
+                    <Grid Margin="12">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+
+                        <!-- Start -->
+                        <TextBlock Grid.Row="0" Grid.Column="0"
+                                   Text="Start (ms):"
+                                   VerticalAlignment="Center"/>
+
+                        <Grid Grid.Row="0" Grid.Column="1" Margin="6,0,12,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+
+                            <TextBox Grid.Column="0"
+                                     Text="{Binding StartMs}"
+                                     VerticalContentAlignment="Center"/>
+
+                            <StackPanel Grid.Column="1" Orientation="Vertical" VerticalAlignment="Center" Margin="6,0,0,0">
+                                <RepeatButton Style="{StaticResource SpinButtonStyle}"
+                                              Content="▲"
+                                              Click="StartMs_Up_Click"/>
+                                <RepeatButton Style="{StaticResource SpinButtonStyle}"
+                                              Content="▼"
+                                              Margin="4,3,0,0"
+                                              Click="StartMs_Down_Click"/>
+                            </StackPanel>
+                        </Grid>
+
+                        <!-- End -->
+                        <TextBlock Grid.Row="0" Grid.Column="2"
+                                   Text="End (ms):"
+                                   VerticalAlignment="Center"/>
+
+                        <Grid Grid.Row="0" Grid.Column="3" Margin="6,0,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+
+                            <TextBox Grid.Column="0"
+                                     Text="{Binding EndMs}"
+                                     VerticalContentAlignment="Center"/>
+
+                            <StackPanel Grid.Column="1" Orientation="Vertical" VerticalAlignment="Center" Margin="6,0,0,0">
+                                <RepeatButton Style="{StaticResource SpinButtonStyle}"
+                                              Content="▲"
+                                              Click="EndMs_Up_Click"/>
+                                <RepeatButton Style="{StaticResource SpinButtonStyle}"
+                                              Content="▼"
+                                              Margin="4,3,0,0"
+                                              Click="EndMs_Down_Click"/>
+                            </StackPanel>
+                        </Grid>
+
+                        <Button Grid.Row="1" Grid.ColumnSpan="4"
+                                Margin="0,12,0,0"
+                                Content="Reset Trim"
+                                Style="{StaticResource EchopadTopButtonStyle}"
+                                Click="ResetTrim_Click"/>
+                    </Grid>
+                </GroupBox>
+
+                <!-- INPUT SOURCE + PREVIEW -->
+                <GroupBox Header="Routing" Margin="0,0,345,12" Width="292" Height="179">
+                    <StackPanel Margin="12">
+
+                        <TextBlock Text="Input Source (normal playback):" Opacity="0.85" Margin="0,0,0,6"/>
+
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,10" Width="218" Height="54">
+                            <RadioButton Content="Input 1"
+                                         GroupName="InputSource"
+                                         Margin="0,0,16,40"
+                                         IsChecked="{Binding InputSource, Converter={StaticResource IntEqualsConverter}, ConverterParameter=1}"
+                                         Height="16"/>
+
+                            <RadioButton Content="Input 2"
+                                         GroupName="InputSource"
+                                         Margin="-85,0,0,0"
+                                         IsChecked="{Binding InputSource, Converter={StaticResource IntEqualsConverter}, ConverterParameter=2}"
+                                         Height="14" Width="58"/>
+                        </StackPanel>
+
+                        <CheckBox Margin="0,-15,0,12"
+                                  IsChecked="{Binding PreviewToMonitor}"
+                                  Height="41">
+                            <CheckBox.Content>
+                                <TextBlock TextWrapping="Wrap">
+                                    Play to Monitor Output<LineBreak/>
+                                    in Edit Mode
+                                </TextBlock>
+                            </CheckBox.Content>
+                        </CheckBox>
+                    </StackPanel>
+                </GroupBox>
+
+                <!-- PER-PAD UI COLORS -->
+                <GroupBox Header="Pad Colors (Per Pad)" Margin="0,-190,-300,10" Width="338" Height="178">
+                    <Grid Margin="12">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="140"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+
+                        <TextBlock Grid.Row="0" Grid.ColumnSpan="2"
+                                   Opacity="0.75"
+                                   TextWrapping="Wrap"
+                                   Text="Per-pad overrides (hex). Leave blank to use defaults. Clear/Empty stays gray." />
+
+                        <!-- Active -->
+                        <TextBlock Grid.Row="1" Grid.Column="0" Text="Active (Loaded):" VerticalAlignment="Top" Margin="0,23,47,0"/>
+                        <Grid Grid.Row="1" Grid.Column="1" Margin="0,10,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+
+                            <TextBox Grid.Column="0"
+                                     Text="{Binding UiActiveHex, UpdateSourceTrigger=PropertyChanged}"
+                                     HorizontalContentAlignment="Center" Margin="-39,0,0,0"/>
+
+                            <Button Grid.Column="1"
+                                    Margin="8,0,0,0"
+                                    Content="Pick…"
+                                    Style="{StaticResource EchopadTopButtonStyle}"
+                                    Click="PickActiveColor_Click"/>
+                        </Grid>
+
+                        <!-- Running -->
+                        <TextBlock Grid.Row="2" Grid.Column="0" Text="Running (Playing):" VerticalAlignment="Top" Margin="0,22,31,0"/>
+                        <Grid Grid.Row="2" Grid.Column="1" Margin="0,10,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+
+                            <TextBox Grid.Column="0"
+                                     Text="{Binding UiRunningHex, UpdateSourceTrigger=PropertyChanged}"
+                                     HorizontalContentAlignment="Center" Margin="-40,0,0,0"/>
+
+                            <Button Grid.Column="1"
+                                    Margin="8,0,0,0"
+                                    Content="Pick…"
+                                    Style="{StaticResource EchopadTopButtonStyle}"
+                                    Click="PickRunningColor_Click"/>
+                        </Grid>
+                    </Grid>
+                </GroupBox>
+
+                <!-- MIDI FEEDBACK + SOURCE MODE (SPLIT) -->
+                <Grid Margin="0,0,0,12">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="12"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+
+                    <!-- LEFT: MIDI feedback -->
+                    <GroupBox Grid.Column="0" Header="MIDI Feedback">
+                        <StackPanel Margin="12">
+
+                            <Grid Margin="0,0,0,10">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+
+                                <TextBox Grid.Column="0"
+                                         Text="{Binding MidiTriggerDisplay}"
+                                         IsReadOnly="True"
+                                         Opacity="0.9"/>
+
+                                <Button Grid.Column="1"
+                                        Margin="8,0,0,0"
+                                        Click="LearnMidiPad_Click"
+                                        IsEnabled="True">
+
+                                    <Button.Style>
+                                        <Style TargetType="Button"
+                                               BasedOn="{StaticResource EchopadTopButtonStyle}">
+                                            <Setter Property="Content" Value="Learn MIDI"/>
+                                            <Setter Property="IsEnabled" Value="True"/>
+
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsMidiLearning}" Value="True">
+                                                    <Setter Property="Content" Value="Listening..."/>
+                                                    <Setter Property="IsEnabled" Value="False"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Button.Style>
+
+                                </Button>
+                            </Grid>
+
+                            <TextBlock Text="LED Output Values (sent to default MIDI Out)" Opacity="0.85" Margin="0,0,0,8"/>
+
+                            <Grid Margin="0,0,0,8">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="120"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Text="Active:" VerticalAlignment="Center"/>
+                                <TextBox Grid.Column="1" Text="{Binding MidiLedActiveValue}"/>
+                            </Grid>
+
+                            <Grid Margin="0,0,0,8">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="120"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Text="Running:" VerticalAlignment="Center"/>
+                                <TextBox Grid.Column="1" Text="{Binding MidiLedRunningValue}"/>
+                            </Grid>
+
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="120"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Text="Clear:" VerticalAlignment="Center"/>
+                                <TextBox Grid.Column="1" Text="{Binding MidiLedClearValue}"/>
+                            </Grid>
+
+                        </StackPanel>
+                    </GroupBox>
+
+                    <!-- RIGHT: Source mode -->
+                    <GroupBox Grid.Column="2" Header="Source Mode">
+                        <StackPanel Margin="12">
+                            <TextBlock Opacity="0.85"
+                                       TextWrapping="Wrap"
+                                       Text="Pick how this pad gets audio. If both are OFF, the pad uses Browse File mode." />
+
+                            <CheckBox Margin="0,10,0,0"
+                                      Content="Echo Mode (capture last buffer, e.g. 15s)"
+                                      IsChecked="{Binding IsEchoMode}"/>
+
+                            <CheckBox Margin="0,10,0,0"
+                                      Content="Drop Folder Mode (auto from watched folders)"
+                                      IsChecked="{Binding IsDropFolderMode}"/>
+
+                            <TextBlock Margin="0,10,0,0"
+                                       Opacity="0.75"
+                                       TextWrapping="Wrap"
+                                       Text="Browse mode shows the selected file. Echo/Drop will still show the active clip path here when armed/loaded." />
+                        </StackPanel>
+                    </GroupBox>
+                </Grid>
+
+                <GroupBox Header="Pad Hotkey" Margin="0,0,0,12" Width="636">
+                    <Grid Margin="12">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+
+                        <TextBlock Grid.Column="0"
+                                   Text="{Binding PadHotkey}"
+                                   Opacity="0.9"
+                                   VerticalAlignment="Center"
+                                   TextTrimming="CharacterEllipsis"/>
+
+                        <Button Grid.Column="1"
+                                Margin="10,0,10,0"
+                                Content="Set Hotkey"
+                                Style="{StaticResource EchopadTopButtonStyle}"
+                                Click="SetPadHotkey_Click"/>
+
+                        <Button Grid.Column="2"
+                                Content="Clear"
+                                Style="{StaticResource EchopadTopButtonStyle}"
+                                Click="ClearPadHotkey_Click"/>
+                    </Grid>
+                </GroupBox>
+
+            </StackPanel>
+        </ScrollViewer>
+
+        <!-- FOOTER -->
+        <StackPanel Grid.Row="2"
+                    Orientation="Horizontal"
+                    HorizontalAlignment="Right"
+                    Margin="0,14,0,0">
+            <Button Content="Cancel"
+                    Width="100"
+                    Margin="0,0,8,0"
+                    Style="{StaticResource EchopadTopButtonStyle}"
+                    Click="Cancel_Click"/>
+            <Button Content="OK"
+                    Width="100"
+                    Style="{StaticResource EchopadTopButtonStyle}"
+                    Click="Ok_Click"/>
+        </StackPanel>
+    </Grid>
+</Window>

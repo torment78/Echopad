@@ -1,0 +1,257 @@
+﻿<Window x:Class="Echopad.App.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:Echopad.App"
+        xmlns:conv="clr-namespace:Echopad.App.UI.Converters"
+        mc:Ignorable="d"
+        Background="{DynamicResource AppBackgroundBrush}"
+        Foreground="{DynamicResource PrimaryTextBrush}"
+        Title="MainWindow" Width="700"
+        Height="745"
+        MinWidth="700"
+        MinHeight="745"
+        Focusable="True"
+        PreviewKeyDown="MainWindow_PreviewKeyDown"
+        PreviewKeyUp="MainWindow_PreviewKeyUp"
+        WindowStartupLocation="CenterScreen">
+
+    <Window.Resources>
+
+        <!-- Add the namespace at the top of the Window tag if you don't have it:
+         xmlns:conv="clr-namespace:Echopad.App.UI.Converters"
+    -->
+
+        <conv:PadVisualBrushConverter x:Key="PadVisualBrushConverter"/>
+
+        <!-- Drop-in pad style that *forces* the converter to update when State changes -->
+        <Style x:Key="EchopadPadButtonStyle_FIXED" TargetType="{x:Type Button}"
+           BasedOn="{StaticResource EchopadPadButtonStyle}">
+
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="{x:Type Button}">
+                        <Grid>
+
+                            <!-- Glow ring -->
+                            <Border x:Name="GlowRing"
+                                CornerRadius="16"
+                                Margin="4"
+                                Opacity="0.75">
+                                <Border.Effect>
+                                    <DropShadowEffect BlurRadius="22"
+                                                  ShadowDepth="0"
+                                                  Opacity="0.75"
+                                                  Color="Transparent"/>
+                                </Border.Effect>
+                            </Border>
+
+                            <!-- Main pad surface -->
+                            <Border x:Name="PadSurface"
+                                CornerRadius="14"
+                                BorderThickness="2"
+                                Padding="8">
+                                <ContentPresenter HorizontalAlignment="Center"
+                                              VerticalAlignment="Center"/>
+                            </Border>
+
+                        </Grid>
+
+                        <ControlTemplate.Triggers>
+
+                            <!-- ========= PadSurface Background ========= -->
+                            <Trigger Property="IsEnabled" Value="True">
+                                <Setter TargetName="PadSurface" Property="Background">
+                                    <Setter.Value>
+                                        <MultiBinding Converter="{StaticResource PadVisualBrushConverter}"
+                                                  ConverterParameter="Background">
+                                            <Binding Path="State"/>
+                                            <Binding Path="ClipPath"/>
+                                            <Binding Path="IsEchoMode"/>
+                                            <Binding Path="InputSource"/>
+                                            <Binding Path="Index"/>
+                                            <Binding Path="GlobalSettings"
+                                                 RelativeSource="{RelativeSource AncestorType={x:Type Window}}"/>
+                                        </MultiBinding>
+                                    </Setter.Value>
+                                </Setter>
+
+                                <!-- ========= PadSurface Border ========= -->
+                                <Setter TargetName="PadSurface" Property="BorderBrush">
+                                    <Setter.Value>
+                                        <MultiBinding Converter="{StaticResource PadVisualBrushConverter}"
+                                                  ConverterParameter="Border">
+                                            <Binding Path="State"/>
+                                            <Binding Path="ClipPath"/>
+                                            <Binding Path="IsEchoMode"/>
+                                            <Binding Path="InputSource"/>
+                                            <Binding Path="Index"/>
+                                            <Binding Path="GlobalSettings"
+                                                 RelativeSource="{RelativeSource AncestorType={x:Type Window}}"/>
+                                        </MultiBinding>
+                                    </Setter.Value>
+                                </Setter>
+
+                                <!-- ========= Glow color ========= -->
+                                <Setter TargetName="GlowRing" Property="BorderBrush">
+                                    <Setter.Value>
+                                        <MultiBinding Converter="{StaticResource PadVisualBrushConverter}"
+                                                  ConverterParameter="Glow">
+                                            <Binding Path="State"/>
+                                            <Binding Path="ClipPath"/>
+                                            <Binding Path="IsEchoMode"/>
+                                            <Binding Path="InputSource"/>
+                                            <Binding Path="Index"/>
+                                            <Binding Path="GlobalSettings"
+                                                 RelativeSource="{RelativeSource AncestorType={x:Type Window}}"/>
+                                        </MultiBinding>
+                                    </Setter.Value>
+                                </Setter>
+
+                                <!-- Push the glow brush into the DropShadowEffect.Color -->
+                                <Setter TargetName="GlowRing" Property="Effect">
+                                    <Setter.Value>
+                                        <DropShadowEffect BlurRadius="22"
+                                                      ShadowDepth="0"
+                                                      Opacity="0.75"
+                                                      Color="{Binding BorderBrush.(SolidColorBrush.Color),
+                                                              RelativeSource={RelativeSource AncestorType={x:Type Border}}}"/>
+                                    </Setter.Value>
+                                </Setter>
+                            </Trigger>
+
+                            <!-- Hover / Pressed polish -->
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="GlowRing" Property="Opacity" Value="1"/>
+                                <Setter TargetName="PadSurface" Property="BorderThickness" Value="3"/>
+                            </Trigger>
+
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="PadSurface" Property="RenderTransform">
+                                    <Setter.Value>
+                                        <ScaleTransform ScaleX="0.98" ScaleY="0.98"/>
+                                    </Setter.Value>
+                                </Setter>
+                                <Setter TargetName="PadSurface" Property="RenderTransformOrigin" Value="0.5,0.5"/>
+                            </Trigger>
+
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="PadSurface" Property="Opacity" Value="0.45"/>
+                                <Setter TargetName="GlowRing" Property="Opacity" Value="0.25"/>
+                            </Trigger>
+
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+    </Window.Resources>
+
+
+    <Grid Margin="18"
+      Background="{DynamicResource AppBackgroundBrush}">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="14"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <!-- Top bar -->
+        <Grid Grid.Row="0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+
+            <Button x:Name="BtnSettings"
+                    Style="{StaticResource EchopadTopButtonStyle}"
+                    Content="Settings"
+                    Click="BtnSettings_Click"/>
+
+            <TextBlock Grid.Column="1"
+                       Text="Echopad"
+                       FontSize="28"
+                       FontWeight="ExtraBold"
+                       Foreground="{DynamicResource PrimaryTextBrush}"
+                       VerticalAlignment="Center"
+                       HorizontalAlignment="Center">
+                <TextBlock.Effect>
+                    <DropShadowEffect BlurRadius="18"
+                                      ShadowDepth="0"
+                                      Opacity="0.55"/>
+                </TextBlock.Effect>
+            </TextBlock>
+
+            <ToggleButton x:Name="BtnEdit"
+                          Grid.Column="2"
+                          Style="{StaticResource EchopadTopButtonStyle}"
+                          Content="Edit"
+                          IsChecked="{Binding IsEditMode, Mode=TwoWay}" />
+        </Grid>
+
+        <!-- ========================================================= -->
+        <!-- PAD AREA CARD                                             -->
+        <!-- ========================================================= -->
+        <Border Grid.Row="2"
+                Background="{DynamicResource CardBackgroundBrush}"
+                BorderBrush="{DynamicResource CardBorderBrush}"
+                BorderThickness="1"
+                CornerRadius="18"
+                Padding="26"
+                ClipToBounds="False">
+
+            <!-- ===================================================== -->
+            <!-- PAD GUTTER                                             -->
+            <!--  - Protects DropShadow from clipping                   -->
+            <!--  - Provides constant breathing room                    -->
+            <!-- ===================================================== -->
+            <Border x:Name="PadGutter"
+                    Padding="26"
+                    Background="Transparent"
+                    ClipToBounds="False"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Center">
+
+                <!-- ================================================= -->
+                <!-- PAD HOST (kept perfectly square in code-behind)   -->
+                <!-- ================================================= -->
+                <Grid x:Name="PadHost"
+                      HorizontalAlignment="Center"
+                      VerticalAlignment="Center"
+                      ClipToBounds="False">
+
+                    <!-- ============================================= -->
+                    <!-- 4x4 PAD GRID (BOUND TO VIEWMODEL)             -->
+                    <!-- ============================================= -->
+                    <ItemsControl ItemsSource="{Binding Pads}">
+
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <UniformGrid Rows="4"
+                                             Columns="4"/>
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Button Style="{StaticResource EchopadPadButtonStyle}"
+                                        Content="{Binding Index}"
+                                        Tag="{Binding}"
+                                        Click="PadButton_Click"
+                                       MouseRightButtonUp="PadButton_MouseRightButtonUp"
+                                       PreviewMouseLeftButtonDown="PadButton_PreviewMouseLeftButtonDown"
+                                       PreviewMouseLeftButtonUp="PadButton_PreviewMouseLeftButtonUp"
+                                       MouseLeave="PadButton_MouseLeave"/>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+
+                    </ItemsControl>
+
+                </Grid>
+            </Border>
+        </Border>
+    </Grid>
+</Window>

@@ -1,0 +1,75 @@
+﻿<Application x:Class="Echopad.App.App"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             StartupUri="MainWindow.xaml">
+
+    <Application.Resources>
+        <ResourceDictionary>
+
+            <!-- =========================================================
+                 GLOBAL GRAY PALETTE (single source of truth)
+                 User requested:
+                   #181818 (dark)
+                   #212121 (medium - cards)
+                   #303030 (lighter - borders)
+               ========================================================= -->
+
+            <!-- Core -->
+            <SolidColorBrush x:Key="BgBrush" Color="#181818"/>
+            <SolidColorBrush x:Key="PanelBrush" Color="#212121"/>
+            <SolidColorBrush x:Key="ControlBgBrush" Color="#212121"/>
+            <SolidColorBrush x:Key="ControlHoverBrush" Color="#252525"/>
+            <SolidColorBrush x:Key="ControlPressedBrush" Color="#1B1B1B"/>
+
+            <!-- Borders (thin, not white, not warm/bevel) -->
+            <SolidColorBrush x:Key="ControlBorderBrush" Color="#303030"/>
+
+            <!-- Text -->
+            <SolidColorBrush x:Key="TextBrush" Color="#EAEAEA"/>
+            <SolidColorBrush x:Key="MutedTextBrush" Color="#B0B0B0"/>
+
+            <!-- Accent (keep your neon accents; we’ll tone them later if you want) -->
+            <SolidColorBrush x:Key="AccentBrush" Color="#55D6FF"/>
+            <SolidColorBrush x:Key="Accent2Brush" Color="#B15CFF"/>
+            <SolidColorBrush x:Key="Accent3Brush" Color="#4CFFB7"/>
+
+            <!-- =========================================================
+                 BACK-COMPAT KEYS (map old names to the new palette)
+                 This prevents "blue everywhere" from older styles.
+               ========================================================= -->
+            <SolidColorBrush x:Key="AppBackgroundBrush" Color="#181818"/>
+            <SolidColorBrush x:Key="CardBackgroundBrush" Color="#212121"/>
+            <SolidColorBrush x:Key="CardBorderBrush" Color="#303030"/>
+
+            <SolidColorBrush x:Key="PrimaryTextBrush" Color="#EAEAEA"/>
+            <SolidColorBrush x:Key="SecondaryTextBrush" Color="#B0B0B0"/>
+
+            <!-- Pads (neutral defaults; state triggers can override) -->
+            <SolidColorBrush x:Key="PadEmptyBrush" Color="#212121"/>
+            <SolidColorBrush x:Key="PadLoadedBrush" Color="#1F2B22"/>
+            <SolidColorBrush x:Key="PadPlayingBrush" Color="#2B1C1C"/>
+
+            <!-- Global font -->
+            <FontFamily x:Key="AppFontFamily">Segoe UI</FontFamily>
+
+            <!-- Apply to all windows by default -->
+            <Style TargetType="{x:Type Window}">
+                <Setter Property="Background" Value="{StaticResource BgBrush}"/>
+                <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
+                <Setter Property="FontFamily" Value="{StaticResource AppFontFamily}"/>
+                <Setter Property="UseLayoutRounding" Value="True"/>
+                <Setter Property="SnapsToDevicePixels" Value="True"/>
+                <Setter Property="TextOptions.TextFormattingMode" Value="Display"/>
+            </Style>
+
+            <ResourceDictionary.MergedDictionaries>
+                <!-- Flat GroupBox template + any other control fixes -->
+                <ResourceDictionary Source="UI/Styles/Controls.Gray.xaml"/>
+
+                <!-- Your existing styles (pads/buttons/etc.) -->
+                <ResourceDictionary Source="UI/Styles/PadStyles.xaml"/>
+            </ResourceDictionary.MergedDictionaries>
+
+        </ResourceDictionary>
+    </Application.Resources>
+</Application>

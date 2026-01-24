@@ -1,0 +1,37 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!-- =========================================================
+         GRAY THEME (requested)
+         #181818 (inputs / darkest)
+         #212121 (cards / medium)
+         #303030 (borders / lighter)
+       ========================================================= -->
+
+    <!-- Page / window background -->
+    <SolidColorBrush x:Key="BgBrush" Color="#212121"/>
+
+    <!-- Cards / group panels -->
+    <SolidColorBrush x:Key="PanelBrush" Color="#212121"/>
+
+    <!-- Text input controls (TextBox / ComboBox surface) -->
+    <SolidColorBrush x:Key="ControlBgBrush" Color="#181818"/>
+
+    <!-- Borders (lighter gray) -->
+    <SolidColorBrush x:Key="ControlBorderBrush" Color="#303030"/>
+
+    <!-- Control hover/pressed (derived from your grays) -->
+    <SolidColorBrush x:Key="ControlHoverBrush" Color="#242424"/>
+    <SolidColorBrush x:Key="ControlPressedBrush" Color="#1D1D1D"/>
+
+    <!-- Text -->
+    <SolidColorBrush x:Key="TextBrush" Color="#EAEAEA"/>
+    <SolidColorBrush x:Key="PrimaryTextBrush" Color="#EAEAEA"/>
+    <SolidColorBrush x:Key="MutedTextBrush" Color="#B8B8B8"/>
+
+    <!-- If you have these used elsewhere -->
+    <SolidColorBrush x:Key="DropBgBrush" Color="#181818"/>
+    <SolidColorBrush x:Key="DropItemHoverBrush" Color="#242424"/>
+    <SolidColorBrush x:Key="DropItemSelectedBrush" Color="#303030"/>
+
+</ResourceDictionary>
