@@ -1,201 +1,170 @@
-🔊 Audio Setup (First-Time Setup)
+# 🛠️ Echopad – Setup & Usage Guide
 
-Open Settings → Audio.
+This guide covers first-time setup, per-pad configuration, and everyday usage.
 
-Configure:
+Follow the steps in order.
 
-Input 1 – main capture source (mic, mixer, etc.)
+---
 
-Input 2 – secondary capture source
+## 1️⃣ Audio Setup
 
-Main Output – where pads play
+Open **Settings → Audio**.
 
-Monitor Output – optional preview output
+### Audio Inputs
 
-These inputs are also used by Echo Mode.
+![Audio input setup](images/setup-audio-input.png)
 
-🎙️ Echo Mode (Live Capture)
+- **Input 1** – primary live capture source
+- **Input 2** – secondary live capture source
 
-Echo Mode allows you to capture the last few seconds of live audio and assign it to a pad.
+These inputs are used by Echo Mode and per-pad routing.
 
-How it works
+---
 
-Echopad continuously buffers audio from inputs
+### Main Output
 
-Buffer length ≈ 15 seconds
+![Main output setup](images/setup-audio-output.png)
 
-When you press an empty pad:
+- Select the main playback device
+- This is where pads play during Run Mode
 
-The last buffer is written to WAV
+---
 
-File is assigned to that pad
+### Monitoring Output
 
-Pad becomes Loaded
+![Monitoring output setup](images/setup-audio-monitoring.png)
 
-When Echo Mode is ON:
+- Optional preview output
+- Used when previewing pads in Edit Mode
 
-Empty pad shows Armed color
+---
 
-Pressing the pad commits the buffer
+## 2️⃣ MIDI Setup
 
-This is perfect for:
+Open **Settings → MIDI**.
 
-stream highlights
+### MIDI Input
 
-call-outs
+![MIDI input setup](images/setup-midi-input.png)
 
-instant replays
+- Select your MIDI controller
+- This device triggers pads and global actions
 
-voice effects
+---
 
-🎨 Pad Colors (Per-Pad)
+### MIDI Output (LED Feedback)
 
-Each pad can override its colors:
+![MIDI return setup](images/setup-midi-return.png)
 
-Active color (Loaded / Armed)
+- Optional but recommended
+- Sends pad state back to the controller
+- Enables LED feedback for pad states
 
-Running color (Playing)
+---
 
-You can:
+## 3️⃣ Enter Edit Mode
 
-click the color box to open a picker
+Click the **Edit** button in the top bar.
 
-paste a HEX value manually
+![Edit button](images/edit-bar-pad.png)
 
-If no override is set:
+Edit Mode enables configuration instead of playback.
 
-theme defaults are used
+---
 
-🎹 MIDI Support
-MIDI Input
+## 4️⃣ Edit Mode Active
 
-Trigger pads
+![Edit mode active](images/edit-per-pad-active.png)
 
-Toggle Edit Mode
+When Edit Mode is active:
+- Pads no longer play audio
+- Pads open configuration instead
 
-Open Settings
+---
 
-Learn mode supported
+## 5️⃣ Open Per-Pad Settings
 
-MIDI Learn
+Right-click any pad while in Edit Mode.
 
-Click Learn
+![Right click pad](images/right-click-pad.png)
 
-Press a MIDI pad / key
+This opens the per-pad settings window.
 
-Binding is stored instantly
+---
 
-MIDI Output (LED feedback)
+## 6️⃣ Per-Pad Settings – Audio & Input
 
-Each pad sends LED values:
+![Pick audio input](images/edit-per-pad-window-pick-audio-input.png)
 
-Active
+From here you can:
+- Assign an audio file
+- Select Input 1 or Input 2
+- Define which input Echo Mode captures from
 
-Running
+---
 
-Clear
+## 7️⃣ Per-Pad Settings – Echo & Drop Folder
 
-Values are configurable per pad and globally.
+![Echo and drop folder](images/edit-per-pad-window-pick-echo-mode.png)
 
-📁 Drop Folder Mode
+Options include:
+- **Echo Mode** – enables live capture
+- **Drop Folder Mode** – auto-assign files from a folder
 
-You can enable Drop Folder Mode on any pad.
+---
 
-How it works:
+## 8️⃣ Trimming Audio (Edit Mode)
 
-Files dropped into the folder:
+Hover over trim values and use the mouse wheel.
 
-auto-assign to the next eligible pad
+### Trim In
 
-pads marked for drop receive files first
+![Trim in](images/trim-in.png)
 
-Great for:
+Adjusts the playback start position.
 
-fast sample loading
+---
 
-drag-and-drop workflows
+### Trim Out
 
-external automation
+![Trim out](images/trim-out.png)
 
-✂️ Audio Trimming
+Adjusts the playback end position.
 
-In Edit Mode:
+---
 
-hover over trim fields
+## 9️⃣ Run Mode Usage
 
-use mouse wheel to adjust
+Exit Edit Mode.
 
-keyboard trim hotkeys supported
+Pads now:
+- Play audio
+- Capture live audio if armed
+- Respond to MIDI and keyboard triggers
 
-Trimming is non-destructive and saved per pad.
+---
 
-⌨️ Keyboard Hotkeys
+## 🔁 Typical Workflow
 
-You can bind:
+1. Configure audio and MIDI
+2. Enter Edit Mode
+3. Configure pads and Echo Mode
+4. Trim audio if needed
+5. Exit Edit Mode
+6. Perform live
 
-Toggle Edit Mode
+---
 
-Open Settings
+## 💾 Settings Persistence
 
-Trigger pads
-
-Trim controls
-
-Hotkeys are human-readable (e.g. Ctrl+Shift+F1) and portable.
-
-💾 Settings & Portability
-
-All settings stored in:
+All configuration is saved automatically to:
 
 echopad.settings.json
 
+No manual saving is required.
 
-Located next to the EXE
+---
 
-No registry usage
+## ✅ Setup Complete
 
-Fully portable
-
-Safe to back up or version control
-
-🛠️ Intended Use Cases
-
-Live streaming
-
-Podcasting
-
-Radio production
-
-Voice effects
-
-Soundboards
-
-MIDI performance rigs
-
-OBS / VoiceMeeter setups
-
-🚧 Current Status
-
-Actively developed
-
-Stable core architecture
-
-Installer planned (Inno Setup)
-
-Feature-complete for live use
-
-📜 License
-
-(Your license here)
-
-🙌 Credits
-
-Built with:
-
-.NET / WPF
-
-NAudio
-
-MIDI via NAudio
-
-Custom audio engine
+Echopad is now ready for daily use and live performance.
