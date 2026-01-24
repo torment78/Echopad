@@ -1167,15 +1167,17 @@ namespace Echopad.App
 
                 _controller.ClearPad(pad.Index);
 
-                // IMPORTANT: Do NOT wipe MIDI settings. Only clear clip/trim/modes.
+                // IMPORTANT: Do NOT wipe MIDI settings OR modes. Only clear clip/trim.
                 var gs = _settingsService.Load();
                 var ps = gs.GetOrCreatePad(pad.Index);
 
                 ps.ClipPath = null;
                 ps.StartMs = 0;
                 ps.EndMs = 0;
-                ps.IsEchoMode = false;
-                ps.IsDropFolderMode = false;
+
+                // KEEP THESE AS-IS (do not touch):
+                // ps.IsEchoMode
+                // ps.IsDropFolderMode
 
                 _settingsService.Save(gs);
                 GlobalSettings = gs;
