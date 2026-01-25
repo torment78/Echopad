@@ -6,6 +6,9 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <UseWPF>true</UseWPF>
+
+    <!-- NEW: EXE icon (must be a real .ico file at this path) -->
+    <ApplicationIcon>Assets\AppIcon\AppIcon.ico</ApplicationIcon>
   </PropertyGroup>
 
   <ItemGroup>
@@ -23,6 +26,11 @@
     <Page Update="UI\Styles\PadStyles.xaml">
       <Generator></Generator>
     </Page>
+  </ItemGroup>
+
+  <!-- NEW: ensure the .ico is included in build output & pack URI works -->
+  <ItemGroup>
+    <Resource Include="Assets\AppIcon\AppIcon.ico" />
   </ItemGroup>
 
 </Project>

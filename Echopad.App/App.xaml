@@ -5,7 +5,7 @@
 
     <Application.Resources>
         <ResourceDictionary>
-
+            
             <!-- =========================================================
                  GLOBAL GRAY PALETTE (single source of truth)
                  User requested:
@@ -54,6 +54,7 @@
 
             <!-- Apply to all windows by default -->
             <Style TargetType="{x:Type Window}">
+                <Setter Property="Icon" Value="Assets/AppIcon/AppIcon.ico"/>
                 <Setter Property="Background" Value="{StaticResource BgBrush}"/>
                 <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
                 <Setter Property="FontFamily" Value="{StaticResource AppFontFamily}"/>
