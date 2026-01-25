@@ -6,6 +6,7 @@ using System;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
+using System.Windows.Threading; // NEW
 
 namespace Echopad.App.Settings
 {
@@ -24,6 +25,12 @@ namespace Echopad.App.Settings
         public ObservableCollection<DeviceOption> MidiOutputs { get; } = new();
 
         public ObservableCollection<string> AudioFolders { get; } = new();
+
+        // =========================================================
+        // NEW: Debounced auto-save
+        // =========================================================
+        private readonly DispatcherTimer _autoSaveTimer;
+        private bool _suppressAutoSave;
 
         public SettingsViewModel(
             SettingsService settingsService,
@@ -44,50 +51,83 @@ namespace Echopad.App.Settings
                 foreach (var f in Settings.AudioFolders)
                     AudioFolders.Add(f);
             }
+
+            // NEW: auto-save timer (debounce)
+            _autoSaveTimer = new DispatcherTimer
+            {
+                Interval = TimeSpan.FromMilliseconds(250)
+            };
+            _autoSaveTimer.Tick += (_, __) =>
+            {
+                _autoSaveTimer.Stop();
+                if (_suppressAutoSave) return;
+                Save(); // uses current VM state
+            };
+        }
+
+        // =========================================================
+        // NEW: helper to request an auto-save
+        // =========================================================
+        private void RequestAutoSave()
+        {
+            if (_suppressAutoSave) return;
+
+            // restart debounce timer
+            _autoSaveTimer.Stop();
+            _autoSaveTimer.Start();
         }
 
         public string? Input1DeviceId
         {
             get => Settings.Input1DeviceId;
-            set { Settings.Input1DeviceId = value; OnPropertyChanged(); }
+            set
+            {
+                if (Settings.Input1DeviceId == value) return;
+                Settings.Input1DeviceId = value;
+                OnPropertyChanged();
+                RequestAutoSave(); // NEW
+            }
         }
 
         public string? Input2DeviceId
         {
             get => Settings.Input2DeviceId;
-            set { Settings.Input2DeviceId = value; OnPropertyChanged(); }
+            set
+            {
+                if (Settings.Input2DeviceId == value) return;
+                Settings.Input2DeviceId = value;
+                OnPropertyChanged();
+                RequestAutoSave(); // NEW
+            }
         }
 
         public string? MainOutDeviceId
         {
             get => Settings.MainOutDeviceId;
-            set { Settings.MainOutDeviceId = value; OnPropertyChanged(); }
+            set
+            {
+                if (Settings.MainOutDeviceId == value) return;
+                Settings.MainOutDeviceId = value;
+                OnPropertyChanged();
+                RequestAutoSave(); // NEW
+            }
         }
 
         public string? MonitorOutDeviceId
         {
             get => Settings.MonitorOutDeviceId;
-            set { Settings.MonitorOutDeviceId = value; OnPropertyChanged(); }
-        }
-        // =========================================================
-        // UI: Armed colors by input (hex)
-        // =========================================================
-        public string? UiArmedInput1Hex
-        {
-            get => Settings.UiArmedInput1Hex;
-            set { Settings.UiArmedInput1Hex = value; OnPropertyChanged(); }
-        }
-
-        public string? UiArmedInput2Hex
-        {
-            get => Settings.UiArmedInput2Hex;
-            set { Settings.UiArmedInput2Hex = value; OnPropertyChanged(); }
+            set
+            {
+                if (Settings.MonitorOutDeviceId == value) return;
+                Settings.MonitorOutDeviceId = value;
+                OnPropertyChanged();
+                RequestAutoSave(); // NEW
+            }
         }
 
         // =========================================================
-        // NEW: Global "ARMED" LED values (Input 1 / Input 2)
+        // Global "ARMED" LED values (Input 1 / Input 2)
         // =========================================================
-
         public int MidiArmedInput1Value
         {
             get => Settings.MidiArmedInput1Value;
@@ -97,6 +137,7 @@ namespace Echopad.App.Settings
                 if (Settings.MidiArmedInput1Value == v) return;
                 Settings.MidiArmedInput1Value = v;
                 OnPropertyChanged();
+                RequestAutoSave(); // NEW
             }
         }
 
@@ -109,23 +150,35 @@ namespace Echopad.App.Settings
                 if (Settings.MidiArmedInput2Value == v) return;
                 Settings.MidiArmedInput2Value = v;
                 OnPropertyChanged();
+                RequestAutoSave(); // NEW
             }
         }
 
         // =========================================================
         // Drop Folder (global listening folder)
         // =========================================================
-
         public bool DropFolderEnabled
         {
             get => Settings.DropFolderEnabled;
-            set { Settings.DropFolderEnabled = value; OnPropertyChanged(); }
+            set
+            {
+                if (Settings.DropFolderEnabled == value) return;
+                Settings.DropFolderEnabled = value;
+                OnPropertyChanged();
+                RequestAutoSave(); // NEW
+            }
         }
 
         public string? DropWatchFolder
         {
             get => Settings.DropWatchFolder;
-            set { Settings.DropWatchFolder = value; OnPropertyChanged(); }
+            set
+            {
+                if (Settings.DropWatchFolder == value) return;
+                Settings.DropWatchFolder = value;
+                OnPropertyChanged();
+                RequestAutoSave(); // NEW
+            }
         }
 
         // helpers used by SettingsWindow code-behind
@@ -134,101 +187,196 @@ namespace Echopad.App.Settings
             if (string.IsNullOrWhiteSpace(path))
                 return;
 
+            // Avoid saving twice in the middle of batch updates
+            _suppressAutoSave = true; // NEW
+
             DropWatchFolder = path;
             DropFolderEnabled = true;
 
             // ensure it's visible in the bottom list
             AddFolder(path);
+
+            _suppressAutoSave = false; // NEW
+            RequestAutoSave();         // NEW
         }
 
         public void ClearDropFolder()
         {
+            _suppressAutoSave = true; // NEW
+
             DropWatchFolder = null;
             DropFolderEnabled = false;
+
+            _suppressAutoSave = false; // NEW
+            RequestAutoSave();         // NEW
         }
 
         public string? MidiInDeviceId
         {
             get => Settings.MidiInDeviceId;
-            set { Settings.MidiInDeviceId = value; OnPropertyChanged(); }
+            set
+            {
+                if (Settings.MidiInDeviceId == value) return;
+                Settings.MidiInDeviceId = value;
+                OnPropertyChanged();
+                RequestAutoSave(); // NEW
+            }
         }
 
         public string? MidiOutDeviceId
         {
             get => Settings.MidiOutDeviceId;
-            set { Settings.MidiOutDeviceId = value; OnPropertyChanged(); }
+            set
+            {
+                if (Settings.MidiOutDeviceId == value) return;
+                Settings.MidiOutDeviceId = value;
+                OnPropertyChanged();
+                RequestAutoSave(); // NEW
+            }
         }
 
         public string? HotkeyToggleEdit
         {
             get => Settings.HotkeyToggleEdit;
-            set { Settings.HotkeyToggleEdit = value; OnPropertyChanged(); }
+            set
+            {
+                if (Settings.HotkeyToggleEdit == value) return;
+                Settings.HotkeyToggleEdit = value;
+                OnPropertyChanged();
+                RequestAutoSave(); // NEW
+            }
         }
 
         public string? HotkeyOpenSettings
         {
             get => Settings.HotkeyOpenSettings;
-            set { Settings.HotkeyOpenSettings = value; OnPropertyChanged(); }
+            set
+            {
+                if (Settings.HotkeyOpenSettings == value) return;
+                Settings.HotkeyOpenSettings = value;
+                OnPropertyChanged();
+                RequestAutoSave(); // NEW
+            }
         }
 
         public string? MidiBindToggleEdit
         {
             get => Settings.MidiBindToggleEdit;
-            set { Settings.MidiBindToggleEdit = value; OnPropertyChanged(); }
+            set
+            {
+                if (Settings.MidiBindToggleEdit == value) return;
+                Settings.MidiBindToggleEdit = value;
+                OnPropertyChanged();
+                RequestAutoSave(); // NEW
+            }
         }
 
         public string? MidiBindOpenSettings
         {
             get => Settings.MidiBindOpenSettings;
-            set { Settings.MidiBindOpenSettings = value; OnPropertyChanged(); }
+            set
+            {
+                if (Settings.MidiBindOpenSettings == value) return;
+                Settings.MidiBindOpenSettings = value;
+                OnPropertyChanged();
+                RequestAutoSave(); // NEW
+            }
         }
 
         public string? HotkeyTrimSelectIn
         {
             get => Settings.HotkeyTrimSelectIn;
-            set { Settings.HotkeyTrimSelectIn = value; OnPropertyChanged(); }
+            set
+            {
+                if (Settings.HotkeyTrimSelectIn == value) return;
+                Settings.HotkeyTrimSelectIn = value;
+                OnPropertyChanged();
+                RequestAutoSave(); // NEW
+            }
         }
 
         public string? HotkeyTrimSelectOut
         {
             get => Settings.HotkeyTrimSelectOut;
-            set { Settings.HotkeyTrimSelectOut = value; OnPropertyChanged(); }
+            set
+            {
+                if (Settings.HotkeyTrimSelectOut == value) return;
+                Settings.HotkeyTrimSelectOut = value;
+                OnPropertyChanged();
+                RequestAutoSave(); // NEW
+            }
         }
 
         public string? HotkeyTrimNudgePlus
         {
             get => Settings.HotkeyTrimNudgePlus;
-            set { Settings.HotkeyTrimNudgePlus = value; OnPropertyChanged(); }
+            set
+            {
+                if (Settings.HotkeyTrimNudgePlus == value) return;
+                Settings.HotkeyTrimNudgePlus = value;
+                OnPropertyChanged();
+                RequestAutoSave(); // NEW
+            }
         }
 
         public string? HotkeyTrimNudgeMinus
         {
             get => Settings.HotkeyTrimNudgeMinus;
-            set { Settings.HotkeyTrimNudgeMinus = value; OnPropertyChanged(); }
+            set
+            {
+                if (Settings.HotkeyTrimNudgeMinus == value) return;
+                Settings.HotkeyTrimNudgeMinus = value;
+                OnPropertyChanged();
+                RequestAutoSave(); // NEW
+            }
         }
 
         public string? MidiBindTrimSelectIn
         {
             get => Settings.MidiBindTrimSelectIn;
-            set { Settings.MidiBindTrimSelectIn = value; OnPropertyChanged(); }
+            set
+            {
+                if (Settings.MidiBindTrimSelectIn == value) return;
+                Settings.MidiBindTrimSelectIn = value;
+                OnPropertyChanged();
+                RequestAutoSave(); // NEW
+            }
         }
 
         public string? MidiBindTrimSelectOut
         {
             get => Settings.MidiBindTrimSelectOut;
-            set { Settings.MidiBindTrimSelectOut = value; OnPropertyChanged(); }
+            set
+            {
+                if (Settings.MidiBindTrimSelectOut == value) return;
+                Settings.MidiBindTrimSelectOut = value;
+                OnPropertyChanged();
+                RequestAutoSave(); // NEW
+            }
         }
 
         public string? MidiBindTrimNudgePlus
         {
             get => Settings.MidiBindTrimNudgePlus;
-            set { Settings.MidiBindTrimNudgePlus = value; OnPropertyChanged(); }
+            set
+            {
+                if (Settings.MidiBindTrimNudgePlus == value) return;
+                Settings.MidiBindTrimNudgePlus = value;
+                OnPropertyChanged();
+                RequestAutoSave(); // NEW
+            }
         }
 
         public string? MidiBindTrimNudgeMinus
         {
             get => Settings.MidiBindTrimNudgeMinus;
-            set { Settings.MidiBindTrimNudgeMinus = value; OnPropertyChanged(); }
+            set
+            {
+                if (Settings.MidiBindTrimNudgeMinus == value) return;
+                Settings.MidiBindTrimNudgeMinus = value;
+                OnPropertyChanged();
+                RequestAutoSave(); // NEW
+            }
         }
 
         public void AddFolder(string path)
@@ -243,6 +391,7 @@ namespace Echopad.App.Settings
             }
 
             AudioFolders.Add(path);
+            RequestAutoSave(); // NEW
         }
 
         public void RemoveFolder(string path)
@@ -255,10 +404,13 @@ namespace Echopad.App.Settings
                 if (string.Equals(AudioFolders[i], path, StringComparison.OrdinalIgnoreCase))
                     AudioFolders.RemoveAt(i);
             }
+
+            RequestAutoSave(); // NEW
         }
 
         public void Save()
         {
+            // IMPORTANT: keep this “atomic” so autosave writes a consistent JSON
             Settings.AudioFolders = new System.Collections.Generic.List<string>(AudioFolders);
             _settingsService.Save(Settings);
         }

@@ -1,4 +1,5 @@
 ﻿using System;
+using System.ComponentModel; // NEW
 using System.IO;
 using System.Windows;
 using Microsoft.Win32;
@@ -10,13 +11,105 @@ namespace Echopad.App.Settings
         private readonly SettingsViewModel _vm;
         private System.Windows.Threading.DispatcherTimer? _vuTimer;
 
+        // NEW: debounce live-apply so device re-init doesn't happen 10x per second
+        private System.Windows.Threading.DispatcherTimer? _applyTimer;
+
         public SettingsWindow(SettingsViewModel vm)
         {
             InitializeComponent();
             _vm = vm;
             DataContext = _vm;
-            Loaded += (_, __) => StartVuTimer();
-            Closed += (_, __) => StopVuTimer();
+
+            Loaded += (_, __) =>
+            {
+                StartVuTimer();
+                HookLiveApply(); // NEW
+            };
+
+            Closed += (_, __) =>
+            {
+                StopVuTimer();
+                UnhookLiveApply(); // NEW
+            };
+        }
+
+        // =========================================================
+        // NEW: Live apply wiring
+        // =========================================================
+        private void HookLiveApply()
+        {
+            UnhookLiveApply();
+
+            _applyTimer = new System.Windows.Threading.DispatcherTimer
+            {
+                Interval = TimeSpan.FromMilliseconds(250)
+            };
+            _applyTimer.Tick += (_, __) =>
+            {
+                _applyTimer!.Stop();
+                ApplyToOwnerNow();
+            };
+
+            _vm.PropertyChanged += Vm_PropertyChanged;
+        }
+
+        private void UnhookLiveApply()
+        {
+            try
+            {
+                if (_applyTimer != null)
+                {
+                    _applyTimer.Stop();
+                    _applyTimer.Tick -= ApplyTimer_TickShim;
+                    // we used inline lambda; keep a shim so removal is safe even if already removed
+                }
+            }
+            catch { }
+
+            _applyTimer = null;
+
+            try { _vm.PropertyChanged -= Vm_PropertyChanged; } catch { }
+        }
+
+        // tiny shim so Unhook doesn't crash if it tries to detach (no-op)
+        private void ApplyTimer_TickShim(object? sender, EventArgs e) { }
+
+        private void Vm_PropertyChanged(object? sender, PropertyChangedEventArgs e)
+        {
+            // Only live-apply for settings that affect engines/devices/watcher.
+            // Everything still autosaves in SettingsViewModel already.
+            switch (e.PropertyName)
+            {
+                case nameof(SettingsViewModel.Input1DeviceId):
+                case nameof(SettingsViewModel.Input2DeviceId):
+                case nameof(SettingsViewModel.MainOutDeviceId):
+                case nameof(SettingsViewModel.MonitorOutDeviceId):
+                case nameof(SettingsViewModel.MidiInDeviceId):
+                case nameof(SettingsViewModel.MidiOutDeviceId):
+                case nameof(SettingsViewModel.DropFolderEnabled):
+                case nameof(SettingsViewModel.DropWatchFolder):
+                    RequestApplyToOwner();
+                    break;
+            }
+        }
+
+        private void RequestApplyToOwner()
+        {
+            if (_applyTimer == null)
+                return;
+
+            _applyTimer.Stop();
+            _applyTimer.Start();
+        }
+
+        private void ApplyToOwnerNow()
+        {
+            // SettingsWindow Owner is MainWindow in your code: new SettingsWindow(vm){ Owner=this }
+            if (Owner is not MainWindow mw)
+                return;
+
+            // Apply the settings immediately (devices, drop watcher, LEDs)
+            mw.ApplySettingsLive();
         }
 
         private void Save_Click(object sender, RoutedEventArgs e)
@@ -25,6 +118,10 @@ namespace Echopad.App.Settings
             EnsureDropFolderExistsIfEnabled();
 
             _vm.Save();
+
+            // NEW: ensure final apply before closing (in case last click is still debounced)
+            ApplyToOwnerNow();
+
             DialogResult = true;
         }
 
@@ -32,6 +129,7 @@ namespace Echopad.App.Settings
         {
             DialogResult = false;
         }
+
         private void StartVuTimer()
         {
             StopVuTimer();
@@ -43,7 +141,6 @@ namespace Echopad.App.Settings
 
             _vuTimer.Tick += (_, __) =>
             {
-                // SettingsWindow Owner is MainWindow in your code: new SettingsWindow(vm){ Owner=this }
                 if (Owner is not MainWindow mw)
                     return;
 
@@ -53,6 +150,7 @@ namespace Echopad.App.Settings
                 if (VuInput1 != null) VuInput1.Value = p1;
                 if (VuInput1Db != null) VuInput1Db.Text = db1 <= -89 ? "-inf" : $"{db1:0} dB";
 
+                // Input 2
                 var p2 = mw.GetInputPeak01(2);
                 var db2 = mw.GetInputPeakDb(2);
                 if (VuInput2 != null) VuInput2.Value = p2;
@@ -103,9 +201,6 @@ namespace Echopad.App.Settings
             }
         }
 
-        // =========================================================
-        // NEW: use existing AudioFolders list to set DropWatchFolder
-        // =========================================================
         private void UseSelectedAsDropFolder_Click(object sender, RoutedEventArgs e)
         {
             if (FoldersList.SelectedItem is not string selected || string.IsNullOrWhiteSpace(selected))
@@ -117,11 +212,10 @@ namespace Echopad.App.Settings
 
             _vm.SetDropFolder(selected);
             EnsureDropFolderExistsIfEnabled();
-        }
 
-        // =========================================================
-        // DROP FOLDER (DEDICATED WATCH/LISTENING FOLDER)
-        // =========================================================
+            // NEW: Apply immediately
+            RequestApplyToOwner();
+        }
 
         private void BrowseDropWatchFolder_Click(object sender, RoutedEventArgs e)
         {
@@ -131,6 +225,9 @@ namespace Echopad.App.Settings
 
             _vm.SetDropFolder(selected);
             EnsureDropFolderExistsIfEnabled();
+
+            // NEW: Apply immediately
+            RequestApplyToOwner();
         }
 
         private void OpenDropWatchFolder_Click(object sender, RoutedEventArgs e)
@@ -165,6 +262,9 @@ namespace Echopad.App.Settings
         private void ClearDropWatchFolder_Click(object sender, RoutedEventArgs e)
         {
             _vm.ClearDropFolder();
+
+            // NEW: Apply immediately
+            RequestApplyToOwner();
         }
 
         private void CreateDefaultDropWatchFolder_Click(object sender, RoutedEventArgs e)
@@ -175,6 +275,9 @@ namespace Echopad.App.Settings
             {
                 Directory.CreateDirectory(path);
                 _vm.SetDropFolder(path);
+
+                // NEW: Apply immediately
+                RequestApplyToOwner();
             }
             catch (Exception ex)
             {
@@ -240,10 +343,6 @@ namespace Echopad.App.Settings
             return null;
         }
 
-        // =========================================================
-        // Global Actions (Toggle Edit / Open Settings)
-        // =========================================================
-
         private void SetHotkey_ToggleEdit_Click(object sender, RoutedEventArgs e)
         {
             var cap = new HotkeyCaptureWindow { Owner = this };
@@ -258,14 +357,8 @@ namespace Echopad.App.Settings
                 _vm.HotkeyOpenSettings = cap.HotkeyText;
         }
 
-        // -----------------------------
-        // MIDI Learn (FIXED)
-        // -----------------------------
         private void LearnMidi_ToggleEdit_Click(object sender, RoutedEventArgs e)
         {
-            // OLD (stub)
-            // _vm.MidiBindToggleEdit = "Learn:Pending";
-
             _vm.MidiBindToggleEdit = "Learning…";
             if (Owner is MainWindow mw)
             {
@@ -278,9 +371,6 @@ namespace Echopad.App.Settings
 
         private void LearnMidi_OpenSettings_Click(object sender, RoutedEventArgs e)
         {
-            // OLD (stub)
-            // _vm.MidiBindOpenSettings = "Learn:Pending";
-
             _vm.MidiBindOpenSettings = "Learning…";
             if (Owner is MainWindow mw)
             {
@@ -354,10 +444,9 @@ namespace Echopad.App.Settings
                 });
             }
         }
+
         private void TestMidiOut25_Click(object sender, RoutedEventArgs e)
         {
-            // Ensure settings are saved so MidiOutDeviceId is current (optional but helpful)
-            // NOTE: we don't force-save the whole settings file here; we just try to send.
             if (Owner is MainWindow mw)
             {
                 mw.SendHardMidiOutTest_Value25();

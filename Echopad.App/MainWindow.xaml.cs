@@ -313,6 +313,8 @@ namespace Echopad.App
                 _controller.SetEditMode(vm.IsEditMode);
         }
 
+
+
         // =====================================================
         // MIDI LEARN ENTRY POINT (called by SettingsWindow)
         // =====================================================
@@ -329,6 +331,22 @@ namespace Echopad.App
                 // Always return on UI thread
                 Dispatcher.BeginInvoke(() => onLearned(bind));
             };
+        }
+        // =====================================================
+        // NEW: Live-apply settings while SettingsWindow is open
+        // =====================================================
+        public void ApplySettingsLive()
+        {
+            // Reload from disk so we always apply what is actually saved
+            GlobalSettings = _settingsService.Load();
+
+            // Re-apply everything that depends on device IDs / folder paths
+            RefreshDropWatcher();
+            SetupMidiDevices();
+            SetupInputTaps();
+
+            // Update LEDs / visuals if needed
+            SyncAllPadLeds();
         }
 
         // =====================================================
