@@ -44,15 +44,15 @@ namespace Echopad.App.Settings
             {
                 Interval = TimeSpan.FromMilliseconds(250)
             };
-            _applyTimer.Tick += (_, __) =>
-            {
-                _applyTimer!.Stop();
-                ApplyToOwnerNow();
-            };
+            _applyTimer.Tick += ApplyTimer_Tick;
 
             _vm.PropertyChanged += Vm_PropertyChanged;
         }
-
+        private void ApplyTimer_Tick(object? sender, EventArgs e)
+        {
+            _applyTimer?.Stop();
+            ApplyToOwnerNow();
+        }
         private void UnhookLiveApply()
         {
             try
@@ -60,8 +60,7 @@ namespace Echopad.App.Settings
                 if (_applyTimer != null)
                 {
                     _applyTimer.Stop();
-                    _applyTimer.Tick -= ApplyTimer_TickShim;
-                    // we used inline lambda; keep a shim so removal is safe even if already removed
+                    _applyTimer.Tick -= ApplyTimer_Tick;
                 }
             }
             catch { }
@@ -71,8 +70,8 @@ namespace Echopad.App.Settings
             try { _vm.PropertyChanged -= Vm_PropertyChanged; } catch { }
         }
 
-        // tiny shim so Unhook doesn't crash if it tries to detach (no-op)
-        private void ApplyTimer_TickShim(object? sender, EventArgs e) { }
+
+
 
         private void Vm_PropertyChanged(object? sender, PropertyChangedEventArgs e)
         {
@@ -104,11 +103,10 @@ namespace Echopad.App.Settings
 
         private void ApplyToOwnerNow()
         {
-            // SettingsWindow Owner is MainWindow in your code: new SettingsWindow(vm){ Owner=this }
             if (Owner is not MainWindow mw)
                 return;
 
-            // Apply the settings immediately (devices, drop watcher, LEDs)
+            _vm.Save(); // NEW: save immediately
             mw.ApplySettingsLive();
         }
 

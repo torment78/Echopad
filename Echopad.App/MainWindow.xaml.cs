@@ -345,9 +345,18 @@ namespace Echopad.App
             SetupMidiDevices();
             SetupInputTaps();
 
+            // OLD:
+            // if (DataContext is MainViewModel mvm)
+            //     HydratePadsFromSettings(mvm);
+
             // Update LEDs / visuals if needed
             SyncAllPadLeds();
         }
+
+
+        // NEW: called by SettingsWindow live-apply (debounced)
+
+
 
         // =====================================================
         // MIDI SETUP/TEARDOWN
