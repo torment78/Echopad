@@ -172,7 +172,7 @@
                     Click="BtnSettings_Click"/>
 
             <TextBlock Grid.Column="1"
-                       Text="Echopad"
+                       Text="Echopad(Vban  Edition)"
                        FontSize="28"
                        FontWeight="ExtraBold"
                        Foreground="{DynamicResource PrimaryTextBrush}"

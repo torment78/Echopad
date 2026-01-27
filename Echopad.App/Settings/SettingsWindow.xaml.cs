@@ -48,11 +48,13 @@ namespace Echopad.App.Settings
 
             _vm.PropertyChanged += Vm_PropertyChanged;
         }
+
         private void ApplyTimer_Tick(object? sender, EventArgs e)
         {
             _applyTimer?.Stop();
             ApplyToOwnerNow();
         }
+
         private void UnhookLiveApply()
         {
             try
@@ -70,19 +72,43 @@ namespace Echopad.App.Settings
             try { _vm.PropertyChanged -= Vm_PropertyChanged; } catch { }
         }
 
-
-
-
         private void Vm_PropertyChanged(object? sender, PropertyChangedEventArgs e)
         {
             // Only live-apply for settings that affect engines/devices/watcher.
             // Everything still autosaves in SettingsViewModel already.
             switch (e.PropertyName)
             {
+                // Local device IDs
                 case nameof(SettingsViewModel.Input1DeviceId):
                 case nameof(SettingsViewModel.Input2DeviceId):
                 case nameof(SettingsViewModel.MainOutDeviceId):
                 case nameof(SettingsViewModel.MonitorOutDeviceId):
+
+                // NEW: per-channel mode (Local / VBAN)
+                case nameof(SettingsViewModel.Input1Mode):
+                case nameof(SettingsViewModel.Input2Mode):
+                case nameof(SettingsViewModel.Out1Mode):
+                case nameof(SettingsViewModel.Out2Mode):
+
+                // NEW: VBAN RX fields (Input1/Input2)
+                case nameof(SettingsViewModel.Input1VbanIp):
+                case nameof(SettingsViewModel.Input1VbanPort):
+                case nameof(SettingsViewModel.Input1VbanStream):
+
+                case nameof(SettingsViewModel.Input2VbanIp):
+                case nameof(SettingsViewModel.Input2VbanPort):
+                case nameof(SettingsViewModel.Input2VbanStream):
+
+                // NEW: VBAN TX fields (Out1/Out2)
+                case nameof(SettingsViewModel.Out1VbanIp):
+                case nameof(SettingsViewModel.Out1VbanPort):
+                case nameof(SettingsViewModel.Out1VbanStream):
+
+                case nameof(SettingsViewModel.Out2VbanIp):
+                case nameof(SettingsViewModel.Out2VbanPort):
+                case nameof(SettingsViewModel.Out2VbanStream):
+
+                // MIDI + Drop watcher
                 case nameof(SettingsViewModel.MidiInDeviceId):
                 case nameof(SettingsViewModel.MidiOutDeviceId):
                 case nameof(SettingsViewModel.DropFolderEnabled):

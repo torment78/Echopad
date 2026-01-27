@@ -1,37 +1,85 @@
-﻿using NAudio.CoreAudioApi;
+﻿using Echopad.Audio.Vban;
+using Echopad.Core;
+
+using NAudio.CoreAudioApi;
 using NAudio.Wave;
+
 using System;
 using System.Diagnostics;
 
 namespace Echopad.Audio
 {
     /// <summary>
-    /// Captures audio from a selected WASAPI endpoint into a RollingAudioBuffer.
-    /// - If endpoint is CAPTURE (microphone etc) -> WasapiCapture
-    /// - If endpoint is RENDER (speakers / many Voicemeeter buses) -> WasapiLoopbackCapture
+    /// Captures audio into a RollingAudioBuffer.
+    /// LOCAL:
+    /// - CAPTURE endpoint -> WasapiCapture
+    /// - RENDER endpoint  -> WasapiLoopbackCapture (or deviceId "loop:{id}")
+    ///
+    /// VBAN:
+    /// - Receives VBAN AUDIO stream via UDP and writes to RollingAudioBuffer
     /// </summary>
     public sealed class InputTapEngine : IDisposable
     {
+        // OLD input path (kept for compatibility)
         private readonly string? _deviceIdRaw;
 
+        // NEW endpoint path
+        private readonly InputEndpointSettings? _endpoint;
+
+        // WASAPI
         private MMDevice? _device;
         private IWaveIn? _capture;
+
+        // VBAN
+        private VbanRxEngine? _vbanRx;
 
         private WaveFormat? _waveFormat;
         private int _channels;
         private bool _running;
 
+        private int _requestedRollingSeconds;
+
         public RollingAudioBuffer? Buffer { get; private set; }
 
+        // =========================================================
+        // OLD ctor (kept)
+        // =========================================================
         public InputTapEngine(string? deviceId)
         {
             _deviceIdRaw = deviceId;
+        }
+
+        // =========================================================
+        // NEW ctor (preferred)
+        // =========================================================
+        public InputTapEngine(InputEndpointSettings input)
+        {
+            _endpoint = input ?? throw new ArgumentNullException(nameof(input));
+            _deviceIdRaw = input.LocalDeviceId;
         }
 
         public void Start(int rollingSeconds)
         {
             Stop();
 
+            _requestedRollingSeconds = Math.Max(1, rollingSeconds);
+
+            var mode = _endpoint?.Mode ?? AudioEndpointMode.Local;
+
+            if (mode == AudioEndpointMode.Vban)
+            {
+                StartVban();
+                return;
+            }
+
+            StartWasapi(_requestedRollingSeconds);
+        }
+
+        // =========================================================
+        // WASAPI
+        // =========================================================
+        private void StartWasapi(int rollingSeconds)
+        {
             if (string.IsNullOrWhiteSpace(_deviceIdRaw))
             {
                 Debug.WriteLine("[Tap] No device selected.");
@@ -48,20 +96,13 @@ namespace Echopad.Audio
 
                 Debug.WriteLine($"[Tap] Using endpoint: {_device.FriendlyName} | Flow={_device.DataFlow} | ForceLoop={forceLoopback}");
 
-                if (forceLoopback || _device.DataFlow == DataFlow.Render)
-                {
-                    _capture = new WasapiLoopbackCapture(_device);
-                }
-                else
-                {
-                    _capture = new WasapiCapture(_device);
-                }
+                _capture = (forceLoopback || _device.DataFlow == DataFlow.Render)
+                    ? new WasapiLoopbackCapture(_device)
+                    : new WasapiCapture(_device);
 
                 _waveFormat = _capture.WaveFormat;
                 _channels = _waveFormat.Channels;
 
-                // Rolling buffer stores float samples. We'll convert incoming to float.
-                // Keep wave format metadata for later commits.
                 Buffer = new RollingAudioBuffer(rollingSeconds, _waveFormat);
 
                 _capture.DataAvailable += Capture_DataAvailable;
@@ -70,15 +111,82 @@ namespace Echopad.Audio
                 _capture.StartRecording();
                 _running = true;
 
-                Debug.WriteLine($"[Tap] Started. Format={_waveFormat.SampleRate}Hz ch={_waveFormat.Channels} bits={_waveFormat.BitsPerSample} enc={_waveFormat.Encoding}");
+                Debug.WriteLine($"[Tap] Started (WASAPI). {_waveFormat.SampleRate}Hz ch={_channels} enc={_waveFormat.Encoding}");
             }
             catch (Exception ex)
             {
-                Debug.WriteLine("[Tap] Start failed: " + ex);
+                Debug.WriteLine("[Tap] Start (WASAPI) failed: " + ex);
                 Stop();
             }
         }
 
+        // =========================================================
+        // VBAN RX
+        // =========================================================
+        private void StartVban()
+        {
+            try
+            {
+                if (_endpoint == null)
+                {
+                    Debug.WriteLine("[Tap] VBAN mode requested but endpoint is null.");
+                    return;
+                }
+
+                _vbanRx = new VbanRxEngine(_endpoint.Vban);
+                _vbanRx.SamplesReceived += VbanRx_SamplesReceived;
+                _vbanRx.Start();
+
+                Buffer = null;
+                _waveFormat = null;
+                _channels = 0;
+
+                _running = true;
+
+                Debug.WriteLine($"[Tap] Started (VBAN). Port={_endpoint.Vban.Port} Stream='{_endpoint.Vban.StreamName}'");
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine("[Tap] Start (VBAN) failed: " + ex);
+                Stop();
+            }
+        }
+
+        private void VbanRx_SamplesReceived(float[] samples, int sampleCount)
+        {
+            try
+            {
+                if (sampleCount <= 0 || _vbanRx == null)
+                    return;
+
+                var fmt = _vbanRx.WaveFormat;
+                if (fmt == null)
+                    return;
+
+                if (Buffer == null || _waveFormat == null ||
+                    _waveFormat.SampleRate != fmt.SampleRate ||
+                    _waveFormat.Channels != fmt.Channels ||
+                    _waveFormat.BitsPerSample != fmt.BitsPerSample ||
+                    _waveFormat.Encoding != fmt.Encoding)
+                {
+                    _waveFormat = fmt;
+                    _channels = fmt.Channels;
+                    Buffer = new RollingAudioBuffer(_requestedRollingSeconds, fmt);
+
+                    Debug.WriteLine($"[Tap] VBAN buffer init: {fmt.SampleRate}Hz ch={fmt.Channels}");
+                }
+
+                Buffer.AddSamples(samples, sampleCount);
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine("[Tap] VBAN SamplesReceived error: " + ex);
+            }
+        }
+
+        // =========================================================
+        // Cleanup
+        // =========================================================
         public void Stop()
         {
             try
@@ -87,30 +195,35 @@ namespace Echopad.Audio
                 {
                     _capture.DataAvailable -= Capture_DataAvailable;
                     _capture.RecordingStopped -= Capture_RecordingStopped;
-
-                    if (_running)
-                        _capture.StopRecording();
-
+                    if (_running) _capture.StopRecording();
                     _capture.Dispose();
                 }
             }
             catch { }
 
-            _running = false;
             _capture = null;
 
             try { _device?.Dispose(); } catch { }
             _device = null;
 
-            // Keep Buffer reference (optional). If you prefer clearing:
-            // Buffer = null;
+            try
+            {
+                if (_vbanRx != null)
+                {
+                    _vbanRx.SamplesReceived -= VbanRx_SamplesReceived;
+                    _vbanRx.Dispose();
+                }
+            }
+            catch { }
+
+            _vbanRx = null;
+            _running = false;
         }
 
         private void Capture_RecordingStopped(object? sender, StoppedEventArgs e)
         {
             if (e.Exception != null)
                 Debug.WriteLine("[Tap] Recording stopped with error: " + e.Exception);
-
             _running = false;
         }
 
@@ -121,9 +234,7 @@ namespace Echopad.Audio
                 if (Buffer == null || _waveFormat == null)
                     return;
 
-                // Convert input bytes to float[] interleaved
                 var floats = ConvertToFloatInterleaved(e.Buffer, e.BytesRecorded, _waveFormat);
-
                 if (floats.Length > 0)
                     Buffer.AddSamples(floats, floats.Length);
             }
@@ -133,12 +244,13 @@ namespace Echopad.Audio
             }
         }
 
+        // =========================================================
+        // Helpers
+        // =========================================================
         private static float[] ConvertToFloatInterleaved(byte[] data, int bytes, WaveFormat fmt)
         {
             if (bytes <= 0) return Array.Empty<float>();
 
-            // Most WASAPI will be IEEE float 32 or PCM 16.
-            // We'll support: IEEE float 32, PCM 16, PCM 24, PCM 32.
             if (fmt.Encoding == WaveFormatEncoding.IeeeFloat && fmt.BitsPerSample == 32)
             {
                 int samples = bytes / 4;
@@ -169,9 +281,8 @@ namespace Echopad.Audio
                 for (int i = 0; i < samples; i++)
                 {
                     int v = (data[o] | (data[o + 1] << 8) | (data[o + 2] << 16));
-                    // sign extend 24-bit
                     if ((v & 0x800000) != 0) v |= unchecked((int)0xFF000000);
-                    floats[i] = v / 8388608f; // 2^23
+                    floats[i] = v / 8388608f;
                     o += 3;
                 }
                 return floats;
@@ -191,34 +302,18 @@ namespace Echopad.Audio
                 return floats;
             }
 
-            // Fallback: try to interpret as 16-bit
-            Debug.WriteLine($"[Tap] Unsupported format: enc={fmt.Encoding} bps={fmt.BitsPerSample}. Returning silence.");
             return Array.Empty<float>();
         }
 
-        /// <summary>
-        /// Your device provider may store IDs like "wasapi-in:{id}" or "wasapi:{id}" etc.
-        /// This strips common prefixes so MMDeviceEnumerator.GetDevice() receives the real endpoint ID.
-        /// </summary>
         private static string NormalizeDeviceId(string raw)
         {
             var s = raw.Trim();
-
-            if (s.StartsWith("loop:", StringComparison.OrdinalIgnoreCase))
-                return s.Substring(5);
-
-            if (s.StartsWith("wasapi:", StringComparison.OrdinalIgnoreCase))
-                return s.Substring(7);
-
-            if (s.StartsWith("audio:", StringComparison.OrdinalIgnoreCase))
-                return s.Substring(6);
-
+            if (s.StartsWith("loop:", StringComparison.OrdinalIgnoreCase)) return s[5..];
+            if (s.StartsWith("wasapi:", StringComparison.OrdinalIgnoreCase)) return s[7..];
+            if (s.StartsWith("audio:", StringComparison.OrdinalIgnoreCase)) return s[6..];
             return s;
         }
 
-        public void Dispose()
-        {
-            Stop();
-        }
+        public void Dispose() => Stop();
     }
 }

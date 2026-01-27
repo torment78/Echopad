@@ -6,7 +6,7 @@ using System;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
-using System.Windows.Threading; // NEW
+using System.Windows.Threading;
 
 namespace Echopad.App.Settings
 {
@@ -27,7 +27,7 @@ namespace Echopad.App.Settings
         public ObservableCollection<string> AudioFolders { get; } = new();
 
         // =========================================================
-        // NEW: Debounced auto-save
+        // Debounced auto-save
         // =========================================================
         private readonly DispatcherTimer _autoSaveTimer;
         private bool _suppressAutoSave;
@@ -43,6 +43,9 @@ namespace Echopad.App.Settings
 
             Settings = _settingsService.Load();
 
+            // NEW: ensure legacy <-> endpoint compatibility is always applied
+            Settings.EnsureCompatibility();
+
             LoadDeviceLists();
 
             AudioFolders.Clear();
@@ -52,7 +55,7 @@ namespace Echopad.App.Settings
                     AudioFolders.Add(f);
             }
 
-            // NEW: auto-save timer (debounce)
+            // auto-save timer (debounce)
             _autoSaveTimer = new DispatcherTimer
             {
                 Interval = TimeSpan.FromMilliseconds(250)
@@ -66,62 +69,280 @@ namespace Echopad.App.Settings
         }
 
         // =========================================================
-        // NEW: helper to request an auto-save
+        // helper to request an auto-save
         // =========================================================
         private void RequestAutoSave()
         {
             if (_suppressAutoSave) return;
 
-            // restart debounce timer
             _autoSaveTimer.Stop();
             _autoSaveTimer.Start();
         }
 
-        public string? Input1DeviceId
+        // =========================================================
+        // Per-channel mode (Local / VBAN)
+        // =========================================================
+        public AudioEndpointMode Input1Mode
         {
-            get => Settings.Input1DeviceId;
+            get => Settings.Input1.Mode;
             set
             {
-                if (Settings.Input1DeviceId == value) return;
-                Settings.Input1DeviceId = value;
+                if (Settings.Input1.Mode == value) return;
+                Settings.Input1.Mode = value;
                 OnPropertyChanged();
-                RequestAutoSave(); // NEW
+                RequestAutoSave();
+            }
+        }
+
+        public AudioEndpointMode Input2Mode
+        {
+            get => Settings.Input2.Mode;
+            set
+            {
+                if (Settings.Input2.Mode == value) return;
+                Settings.Input2.Mode = value;
+                OnPropertyChanged();
+                RequestAutoSave();
+            }
+        }
+
+        public AudioEndpointMode Out1Mode
+        {
+            get => Settings.Out1.Mode;
+            set
+            {
+                if (Settings.Out1.Mode == value) return;
+                Settings.Out1.Mode = value;
+                OnPropertyChanged();
+                RequestAutoSave();
+            }
+        }
+
+        public AudioEndpointMode Out2Mode
+        {
+            get => Settings.Out2.Mode;
+            set
+            {
+                if (Settings.Out2.Mode == value) return;
+                Settings.Out2.Mode = value;
+                OnPropertyChanged();
+                RequestAutoSave();
+            }
+        }
+
+        // =========================================================
+        // Audio devices (Local mode)
+        // Keep legacy fields in sync for older JSON/tools
+        // =========================================================
+        public string? Input1DeviceId
+        {
+            get => Settings.Input1.LocalDeviceId;
+            set
+            {
+                if (Settings.Input1.LocalDeviceId == value) return;
+                Settings.Input1.LocalDeviceId = value;
+                Settings.Input1DeviceId = value; // legacy sync
+                OnPropertyChanged();
+                RequestAutoSave();
             }
         }
 
         public string? Input2DeviceId
         {
-            get => Settings.Input2DeviceId;
+            get => Settings.Input2.LocalDeviceId;
             set
             {
-                if (Settings.Input2DeviceId == value) return;
-                Settings.Input2DeviceId = value;
+                if (Settings.Input2.LocalDeviceId == value) return;
+                Settings.Input2.LocalDeviceId = value;
+                Settings.Input2DeviceId = value; // legacy sync
                 OnPropertyChanged();
-                RequestAutoSave(); // NEW
+                RequestAutoSave();
             }
         }
 
         public string? MainOutDeviceId
         {
-            get => Settings.MainOutDeviceId;
+            get => Settings.Out1.LocalDeviceId;
             set
             {
-                if (Settings.MainOutDeviceId == value) return;
-                Settings.MainOutDeviceId = value;
+                if (Settings.Out1.LocalDeviceId == value) return;
+                Settings.Out1.LocalDeviceId = value;
+                Settings.MainOutDeviceId = value; // legacy sync
                 OnPropertyChanged();
-                RequestAutoSave(); // NEW
+                RequestAutoSave();
             }
         }
 
         public string? MonitorOutDeviceId
         {
-            get => Settings.MonitorOutDeviceId;
+            get => Settings.Out2.LocalDeviceId;
             set
             {
-                if (Settings.MonitorOutDeviceId == value) return;
-                Settings.MonitorOutDeviceId = value;
+                if (Settings.Out2.LocalDeviceId == value) return;
+                Settings.Out2.LocalDeviceId = value;
+                Settings.MonitorOutDeviceId = value; // legacy sync
                 OnPropertyChanged();
-                RequestAutoSave(); // NEW
+                RequestAutoSave();
+            }
+        }
+
+        // =========================================================
+        // VBAN RX fields (Input1 / Input2)
+        // Null-safe (treat null as "")
+        // =========================================================
+        public string Input1VbanIp
+        {
+            get => Settings.Input1.Vban.RemoteIp ?? "";
+            set
+            {
+                value ??= "";
+                if ((Settings.Input1.Vban.RemoteIp ?? "") == value) return;
+                Settings.Input1.Vban.RemoteIp = value;
+                OnPropertyChanged();
+                RequestAutoSave();
+            }
+        }
+
+        public int Input1VbanPort
+        {
+            get => Settings.Input1.Vban.Port;
+            set
+            {
+                if (Settings.Input1.Vban.Port == value) return;
+                Settings.Input1.Vban.Port = value;
+                OnPropertyChanged();
+                RequestAutoSave();
+            }
+        }
+
+        public string Input1VbanStream
+        {
+            get => Settings.Input1.Vban.StreamName ?? "";
+            set
+            {
+                value ??= "";
+                if ((Settings.Input1.Vban.StreamName ?? "") == value) return;
+                Settings.Input1.Vban.StreamName = value;
+                OnPropertyChanged();
+                RequestAutoSave();
+            }
+        }
+
+        public string Input2VbanIp
+        {
+            get => Settings.Input2.Vban.RemoteIp ?? "";
+            set
+            {
+                value ??= "";
+                if ((Settings.Input2.Vban.RemoteIp ?? "") == value) return;
+                Settings.Input2.Vban.RemoteIp = value;
+                OnPropertyChanged();
+                RequestAutoSave();
+            }
+        }
+
+        public int Input2VbanPort
+        {
+            get => Settings.Input2.Vban.Port;
+            set
+            {
+                if (Settings.Input2.Vban.Port == value) return;
+                Settings.Input2.Vban.Port = value;
+                OnPropertyChanged();
+                RequestAutoSave();
+            }
+        }
+
+        public string Input2VbanStream
+        {
+            get => Settings.Input2.Vban.StreamName ?? "";
+            set
+            {
+                value ??= "";
+                if ((Settings.Input2.Vban.StreamName ?? "") == value) return;
+                Settings.Input2.Vban.StreamName = value;
+                OnPropertyChanged();
+                RequestAutoSave();
+            }
+        }
+
+        // =========================================================
+        // VBAN TX fields (Out1 / Out2)
+        // Null-safe (treat null as "")
+        // =========================================================
+        public string Out1VbanIp
+        {
+            get => Settings.Out1.Vban.RemoteIp ?? "";
+            set
+            {
+                value ??= "";
+                if ((Settings.Out1.Vban.RemoteIp ?? "") == value) return;
+                Settings.Out1.Vban.RemoteIp = value;
+                OnPropertyChanged();
+                RequestAutoSave();
+            }
+        }
+
+        public int Out1VbanPort
+        {
+            get => Settings.Out1.Vban.Port;
+            set
+            {
+                if (Settings.Out1.Vban.Port == value) return;
+                Settings.Out1.Vban.Port = value;
+                OnPropertyChanged();
+                RequestAutoSave();
+            }
+        }
+
+        public string Out1VbanStream
+        {
+            get => Settings.Out1.Vban.StreamName ?? "";
+            set
+            {
+                value ??= "";
+                if ((Settings.Out1.Vban.StreamName ?? "") == value) return;
+                Settings.Out1.Vban.StreamName = value;
+                OnPropertyChanged();
+                RequestAutoSave();
+            }
+        }
+
+        public string Out2VbanIp
+        {
+            get => Settings.Out2.Vban.RemoteIp ?? "";
+            set
+            {
+                value ??= "";
+                if ((Settings.Out2.Vban.RemoteIp ?? "") == value) return;
+                Settings.Out2.Vban.RemoteIp = value;
+                OnPropertyChanged();
+                RequestAutoSave();
+            }
+        }
+
+        public int Out2VbanPort
+        {
+            get => Settings.Out2.Vban.Port;
+            set
+            {
+                if (Settings.Out2.Vban.Port == value) return;
+                Settings.Out2.Vban.Port = value;
+                OnPropertyChanged();
+                RequestAutoSave();
+            }
+        }
+
+        public string Out2VbanStream
+        {
+            get => Settings.Out2.Vban.StreamName ?? "";
+            set
+            {
+                value ??= "";
+                if ((Settings.Out2.Vban.StreamName ?? "") == value) return;
+                Settings.Out2.Vban.StreamName = value;
+                OnPropertyChanged();
+                RequestAutoSave();
             }
         }
 
@@ -137,7 +358,7 @@ namespace Echopad.App.Settings
                 if (Settings.MidiArmedInput1Value == v) return;
                 Settings.MidiArmedInput1Value = v;
                 OnPropertyChanged();
-                RequestAutoSave(); // NEW
+                RequestAutoSave();
             }
         }
 
@@ -150,7 +371,7 @@ namespace Echopad.App.Settings
                 if (Settings.MidiArmedInput2Value == v) return;
                 Settings.MidiArmedInput2Value = v;
                 OnPropertyChanged();
-                RequestAutoSave(); // NEW
+                RequestAutoSave();
             }
         }
 
@@ -165,7 +386,7 @@ namespace Echopad.App.Settings
                 if (Settings.DropFolderEnabled == value) return;
                 Settings.DropFolderEnabled = value;
                 OnPropertyChanged();
-                RequestAutoSave(); // NEW
+                RequestAutoSave();
             }
         }
 
@@ -177,7 +398,7 @@ namespace Echopad.App.Settings
                 if (Settings.DropWatchFolder == value) return;
                 Settings.DropWatchFolder = value;
                 OnPropertyChanged();
-                RequestAutoSave(); // NEW
+                RequestAutoSave();
             }
         }
 
@@ -187,28 +408,26 @@ namespace Echopad.App.Settings
             if (string.IsNullOrWhiteSpace(path))
                 return;
 
-            // Avoid saving twice in the middle of batch updates
-            _suppressAutoSave = true; // NEW
+            _suppressAutoSave = true;
 
             DropWatchFolder = path;
             DropFolderEnabled = true;
 
-            // ensure it's visible in the bottom list
             AddFolder(path);
 
-            _suppressAutoSave = false; // NEW
-            RequestAutoSave();         // NEW
+            _suppressAutoSave = false;
+            RequestAutoSave();
         }
 
         public void ClearDropFolder()
         {
-            _suppressAutoSave = true; // NEW
+            _suppressAutoSave = true;
 
             DropWatchFolder = null;
             DropFolderEnabled = false;
 
-            _suppressAutoSave = false; // NEW
-            RequestAutoSave();         // NEW
+            _suppressAutoSave = false;
+            RequestAutoSave();
         }
 
         public string? MidiInDeviceId
@@ -219,7 +438,7 @@ namespace Echopad.App.Settings
                 if (Settings.MidiInDeviceId == value) return;
                 Settings.MidiInDeviceId = value;
                 OnPropertyChanged();
-                RequestAutoSave(); // NEW
+                RequestAutoSave();
             }
         }
 
@@ -231,7 +450,7 @@ namespace Echopad.App.Settings
                 if (Settings.MidiOutDeviceId == value) return;
                 Settings.MidiOutDeviceId = value;
                 OnPropertyChanged();
-                RequestAutoSave(); // NEW
+                RequestAutoSave();
             }
         }
 
@@ -243,7 +462,7 @@ namespace Echopad.App.Settings
                 if (Settings.HotkeyToggleEdit == value) return;
                 Settings.HotkeyToggleEdit = value;
                 OnPropertyChanged();
-                RequestAutoSave(); // NEW
+                RequestAutoSave();
             }
         }
 
@@ -255,7 +474,7 @@ namespace Echopad.App.Settings
                 if (Settings.HotkeyOpenSettings == value) return;
                 Settings.HotkeyOpenSettings = value;
                 OnPropertyChanged();
-                RequestAutoSave(); // NEW
+                RequestAutoSave();
             }
         }
 
@@ -267,7 +486,7 @@ namespace Echopad.App.Settings
                 if (Settings.MidiBindToggleEdit == value) return;
                 Settings.MidiBindToggleEdit = value;
                 OnPropertyChanged();
-                RequestAutoSave(); // NEW
+                RequestAutoSave();
             }
         }
 
@@ -279,7 +498,7 @@ namespace Echopad.App.Settings
                 if (Settings.MidiBindOpenSettings == value) return;
                 Settings.MidiBindOpenSettings = value;
                 OnPropertyChanged();
-                RequestAutoSave(); // NEW
+                RequestAutoSave();
             }
         }
 
@@ -291,7 +510,7 @@ namespace Echopad.App.Settings
                 if (Settings.HotkeyTrimSelectIn == value) return;
                 Settings.HotkeyTrimSelectIn = value;
                 OnPropertyChanged();
-                RequestAutoSave(); // NEW
+                RequestAutoSave();
             }
         }
 
@@ -303,7 +522,7 @@ namespace Echopad.App.Settings
                 if (Settings.HotkeyTrimSelectOut == value) return;
                 Settings.HotkeyTrimSelectOut = value;
                 OnPropertyChanged();
-                RequestAutoSave(); // NEW
+                RequestAutoSave();
             }
         }
 
@@ -315,7 +534,7 @@ namespace Echopad.App.Settings
                 if (Settings.HotkeyTrimNudgePlus == value) return;
                 Settings.HotkeyTrimNudgePlus = value;
                 OnPropertyChanged();
-                RequestAutoSave(); // NEW
+                RequestAutoSave();
             }
         }
 
@@ -327,7 +546,7 @@ namespace Echopad.App.Settings
                 if (Settings.HotkeyTrimNudgeMinus == value) return;
                 Settings.HotkeyTrimNudgeMinus = value;
                 OnPropertyChanged();
-                RequestAutoSave(); // NEW
+                RequestAutoSave();
             }
         }
 
@@ -339,7 +558,7 @@ namespace Echopad.App.Settings
                 if (Settings.MidiBindTrimSelectIn == value) return;
                 Settings.MidiBindTrimSelectIn = value;
                 OnPropertyChanged();
-                RequestAutoSave(); // NEW
+                RequestAutoSave();
             }
         }
 
@@ -351,7 +570,7 @@ namespace Echopad.App.Settings
                 if (Settings.MidiBindTrimSelectOut == value) return;
                 Settings.MidiBindTrimSelectOut = value;
                 OnPropertyChanged();
-                RequestAutoSave(); // NEW
+                RequestAutoSave();
             }
         }
 
@@ -363,7 +582,7 @@ namespace Echopad.App.Settings
                 if (Settings.MidiBindTrimNudgePlus == value) return;
                 Settings.MidiBindTrimNudgePlus = value;
                 OnPropertyChanged();
-                RequestAutoSave(); // NEW
+                RequestAutoSave();
             }
         }
 
@@ -375,7 +594,7 @@ namespace Echopad.App.Settings
                 if (Settings.MidiBindTrimNudgeMinus == value) return;
                 Settings.MidiBindTrimNudgeMinus = value;
                 OnPropertyChanged();
-                RequestAutoSave(); // NEW
+                RequestAutoSave();
             }
         }
 
@@ -391,7 +610,7 @@ namespace Echopad.App.Settings
             }
 
             AudioFolders.Add(path);
-            RequestAutoSave(); // NEW
+            RequestAutoSave();
         }
 
         public void RemoveFolder(string path)
@@ -405,12 +624,11 @@ namespace Echopad.App.Settings
                     AudioFolders.RemoveAt(i);
             }
 
-            RequestAutoSave(); // NEW
+            RequestAutoSave();
         }
 
         public void Save()
         {
-            // IMPORTANT: keep this “atomic” so autosave writes a consistent JSON
             Settings.AudioFolders = new System.Collections.Generic.List<string>(AudioFolders);
             _settingsService.Save(Settings);
         }

@@ -145,16 +145,11 @@ namespace Echopad.App
                 if (string.IsNullOrWhiteSpace(pad.ClipPath) || !File.Exists(pad.ClipPath))
                 {
                     pad.State = pad.IsEchoMode ? PadState.Armed : PadState.Empty;
-
-
-                    // LED -> clear/off for empty
                     UpdatePadLedForCurrentState(pad);
                     return;
                 }
 
                 pad.State = PadState.Playing;
-
-                // LED -> running
                 UpdatePadLedForCurrentState(pad);
 
                 StartPlayhead(pad);
@@ -162,19 +157,47 @@ namespace Echopad.App
                 bool isEdit = (DataContext as MainViewModel)?.IsEditMode == true;
                 bool preview = isEdit && pad.PreviewToMonitor;
 
-                string? laneOut = _globalSettings.MainOutDeviceId;
+                // =========================================================
+                // OLD (kept as fallback)
+                // =========================================================
+                // string? laneOut = _globalSettings.MainOutDeviceId;
+                // await _audio.PlayPadAsync(
+                //     pad,
+                //     mainOutDeviceId: laneOut,
+                //     monitorOutDeviceId: _globalSettings.MonitorOutDeviceId,
+                //     previewToMonitor: preview
+                // );
 
+                // =========================================================
+                // NEW: Use endpoint-based output when AudioEngine supports it
+                // - Out1 = main lane
+                // - Out2 = monitor lane
+                // - each can be Local or VBAN
+                // =========================================================
+                if (_audio is AudioEngine ae)
+                {
+                    // Build endpoints from GlobalSettings
+                    // NOTE: Until your Settings UI writes VBAN config into GlobalSettings,
+                    // we default to Local using your existing MainOutDeviceId/MonitorOutDeviceId.
+                    var out1 = BuildOut1FromSettings();
+                    var out2 = BuildOut2FromSettings();
 
-                await _audio.PlayPadAsync(
-                    pad,
-                    mainOutDeviceId: laneOut,
-                    monitorOutDeviceId: _globalSettings.MonitorOutDeviceId,
-                    previewToMonitor: preview
-                );
+                    await ae.PlayPadAsync(pad, out1, out2, previewToMonitor: preview);
+                }
+                else
+                {
+                    // Hard fallback (shouldn't happen, but keeps compile-safe)
+                    await _audio.PlayPadAsync(
+                        pad,
+                        mainOutDeviceId: _globalSettings.MainOutDeviceId,
+                        monitorOutDeviceId: _globalSettings.MonitorOutDeviceId,
+                        previewToMonitor: preview
+                    );
+                }
 
-                // if something changed state during/after playback, reflect LED
                 UpdatePadLedForCurrentState(pad);
             };
+
 
             _controller.StopRequested += pad =>
             {
@@ -313,6 +336,65 @@ namespace Echopad.App
                 _controller.SetEditMode(vm.IsEditMode);
         }
 
+        // =====================================================
+        // NEW: Use REAL endpoint settings from GlobalSettings
+        // =====================================================
+        private OutputEndpointSettings BuildOut1FromSettings()
+        {
+            // OLD (hardcoded Local) - keep as comment
+            // return new OutputEndpointSettings
+            // {
+            //     Mode = AudioEndpointMode.Local,
+            //     LocalDeviceId = _globalSettings.MainOutDeviceId,
+            //     Vban = new VbanTxSettings { ... }
+            // };
+
+            // NEW: use persisted endpoint
+            var o = GlobalSettings.Out1 ?? new OutputEndpointSettings();
+
+            // Safety defaults (so you never null-ref)
+            o.Vban ??= new VbanTxSettings
+            {
+                RemoteIp = "127.0.0.1",
+                Port = 6980,
+                StreamName = "ECHOPAD_OUT1",
+                SampleRate = 48000,
+                Channels = 2,
+                Float32 = true,
+                FrameSamples = 256
+            };
+
+            return o;
+        }
+
+        private OutputEndpointSettings BuildOut2FromSettings()
+        {
+            // OLD (hardcoded Local) - keep as comment
+            // return new OutputEndpointSettings
+            // {
+            //     Mode = AudioEndpointMode.Local,
+            //     LocalDeviceId = _globalSettings.MonitorOutDeviceId,
+            //     Vban = new VbanTxSettings { ... }
+            // };
+
+            // NEW: use persisted endpoint
+            var o = GlobalSettings.Out2 ?? new OutputEndpointSettings();
+
+            // Safety defaults (so you never null-ref)
+            o.Vban ??= new VbanTxSettings
+            {
+                RemoteIp = "127.0.0.1",
+                Port = 6980,
+                StreamName = "ECHOPAD_OUT2",
+                SampleRate = 48000,
+                Channels = 2,
+                Float32 = true,
+                FrameSamples = 256
+            };
+
+            return o;
+        }
+
 
 
         // =====================================================
@@ -440,18 +522,23 @@ namespace Echopad.App
         private void SetupInputTaps()
         {
             TearDownInputTaps();
-
-            // Ensure we use the latest settings (device IDs)
             GlobalSettings = _settingsService.Load();
 
-            // Input A (Input1DeviceId)
-            _tapA = new InputTapEngine(GlobalSettings.Input1DeviceId);
+            _tapA = GlobalSettings.Input1.Mode == AudioEndpointMode.Vban
+                ? new InputTapEngine(GlobalSettings.Input1)
+                : new InputTapEngine(GlobalSettings.Input1.LocalDeviceId);
+
             _tapA.Start(RollingBufferSeconds);
 
-            // Input B (Input2DeviceId)
-            _tapB = new InputTapEngine(GlobalSettings.Input2DeviceId);
+            _tapB = GlobalSettings.Input2.Mode == AudioEndpointMode.Vban
+                ? new InputTapEngine(GlobalSettings.Input2)
+                : new InputTapEngine(GlobalSettings.Input2.LocalDeviceId);
+
             _tapB.Start(RollingBufferSeconds);
         }
+
+
+
 
         // =====================================================
         // PUBLIC: live meter readout for Settings window
