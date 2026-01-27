@@ -40,23 +40,15 @@ namespace Echopad.Audio
 
             try
             {
-                var endpointId = NormalizeDeviceId(_deviceIdRaw);
+                bool forceLoopback = _deviceIdRaw.StartsWith("loop:", StringComparison.OrdinalIgnoreCase);
 
+                var endpointId = NormalizeDeviceId(_deviceIdRaw);
                 var enumerator = new MMDeviceEnumerator();
                 _device = enumerator.GetDevice(endpointId);
 
-                if (_device == null)
-                {
-                    Debug.WriteLine($"[Tap] Device not found: {_deviceIdRaw}");
-                    return;
-                }
+                Debug.WriteLine($"[Tap] Using endpoint: {_device.FriendlyName} | Flow={_device.DataFlow} | ForceLoop={forceLoopback}");
 
-                Debug.WriteLine($"[Tap] Using endpoint: {_device.FriendlyName} | Flow={_device.DataFlow}");
-
-                // Capture choice:
-                // - CAPTURE endpoints => WasapiCapture
-                // - RENDER endpoints => WasapiLoopbackCapture (this is what you need for many VoiceMeeter buses)
-                if (_device.DataFlow == DataFlow.Render)
+                if (forceLoopback || _device.DataFlow == DataFlow.Render)
                 {
                     _capture = new WasapiLoopbackCapture(_device);
                 }
@@ -212,15 +204,14 @@ namespace Echopad.Audio
         {
             var s = raw.Trim();
 
-            // Common prefixes we’ve used in other parts of your suite:
-            // "wasapi-in:", "wasapi-out:", "audio-in:", "audio-out:", "device:", etc.
-            int idx = s.IndexOf(':');
-            if (idx > 0)
-            {
-                var head = s.Substring(0, idx).ToLowerInvariant();
-                if (head.Contains("wasapi") || head.Contains("audio") || head.Contains("device"))
-                    return s.Substring(idx + 1);
-            }
+            if (s.StartsWith("loop:", StringComparison.OrdinalIgnoreCase))
+                return s.Substring(5);
+
+            if (s.StartsWith("wasapi:", StringComparison.OrdinalIgnoreCase))
+                return s.Substring(7);
+
+            if (s.StartsWith("audio:", StringComparison.OrdinalIgnoreCase))
+                return s.Substring(6);
 
             return s;
         }
