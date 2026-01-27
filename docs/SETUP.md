@@ -23,7 +23,7 @@ This makes it possible to mix and match local and network audio freely.
 
 ### Input Audio Mode Switch
 
-![Input audio VBAN switch](images/new-input-audio-vband-switch.png)
+![Input audio VBAN switch](images/new-input-audio-vban-switch.png)
 
 Each input (Input 1 and Input 2) has a **mode selector** directly under the input label:
 
@@ -68,7 +68,7 @@ This allows Echopad to capture audio sent from:
 
 ### Main Output Audio Mode Switch
 
-![Output audio VBAN switch](images/new-output-audio-vband-switch.png)
+![Output audio VBAN switch](images/new-output-audio-vban-switch.png)
 
 The **Main Output** can also be switched between:
 
@@ -106,7 +106,7 @@ This enables:
 
 ### Monitor Audio Mode Switch
 
-![Monitor audio VBAN switch](images/new-monitor-audio-vband-switch.png)
+![Monitor audio VBAN switch](images/new-monitor-audio-vban-switch.png)
 
 The **Monitoring Output** (used for previews in Edit Mode) also supports:
 
@@ -137,7 +137,7 @@ This is useful for:
 
 ## 🌐 VBAN In / Out / Monitoring Overview
 
-![VBAN in out and monitoring](images/setup-vband-in-out-and-monitor.png)
+![VBAN in out and monitoring](images/setup-vban-in-out-and-monitor.png)
 
 When VBAN is enabled, each channel shows its own IP, port, and stream fields.
 
@@ -151,7 +151,7 @@ Key points:
 
 ## 🔀 Mixing Local and VBAN (Advanced)
 
-![VBAN mix and match](images/setup-vband-mix-match.png)
+![VBAN mix and match](images/setup-vban-mix-match.png)
 
 Echopad allows **full mix-and-match routing**, for example:
 
