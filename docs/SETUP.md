@@ -1,6 +1,6 @@
 # 🛠️ Echopad – Setup & Usage Guide
 
-This guide covers first-time setup, per-pad configuration, and everyday usage.
+This guide covers first-time setup, per-pad configuration, and everyday usage — including **local audio** and **VBAN (network audio)** routing.
 
 Follow the steps in order.
 
@@ -10,32 +10,157 @@ Follow the steps in order.
 
 Open **Settings → Audio**.
 
-### Audio Inputs
+Echopad supports **per-channel audio routing**, allowing each input, output, and monitor path to be switched independently between:
 
-![Audio input setup](images/setup-audio-input.png)
+- **Local** (WASAPI devices)
+- **VBAN** (UDP network audio)
 
-- **Input 1** – primary live capture source
-- **Input 2** – secondary live capture source
-
-These inputs are used by Echo Mode and per-pad routing.
+This makes it possible to mix and match local and network audio freely.
 
 ---
 
-### Main Output
+## 🔀 Audio Inputs – Local vs VBAN
+
+### Input Audio Mode Switch
+
+![Input audio VBAN switch](images/new-input-audio-vband-switch.png)
+
+Each input (Input 1 and Input 2) has a **mode selector** directly under the input label:
+
+- **Local**  
+  Uses a local WASAPI audio device (microphones, sound cards, virtual drivers, etc.)
+
+- **VBAN**  
+  Receives audio over the network via VBAN (UDP)
+
+Switching modes instantly changes how Echopad captures live audio for Echo Mode.
+
+---
+
+### Audio Inputs (Local Mode)
+
+![Audio input setup](images/setup-audio-input.png)
+
+When **Local** is selected:
+
+- Choose a local audio input device
+- Used by Echo Mode and per-pad capture
+- Supports microphones, interfaces, virtual cables, etc.
+
+---
+
+### Audio Inputs (VBAN Mode)
+
+When **VBAN** is selected, the local device list is replaced with VBAN connection fields:
+
+- **IP Address** – sender IP (or `0.0.0.0` to accept any)
+- **Port** – UDP port
+- **Stream Name** – VBAN stream identifier
+
+This allows Echopad to capture audio sent from:
+- Another PC
+- A mixer
+- OBS / Voicemeeter / other VBAN-capable apps
+
+---
+
+## 🔊 Main Output – Local vs VBAN
+
+### Main Output Audio Mode Switch
+
+![Output audio VBAN switch](images/new-output-audio-vband-switch.png)
+
+The **Main Output** can also be switched between:
+
+- **Local** – normal playback device
+- **VBAN** – network audio transmission
+
+---
+
+### Main Output (Local Mode)
 
 ![Main output setup](images/setup-audio-output.png)
 
 - Select the main playback device
-- This is where pads play during Run Mode
+- Pads play here during Run Mode
 
 ---
 
-### Monitoring Output
+### Main Output (VBAN Mode)
+
+When set to **VBAN**, Echopad sends pad audio over the network.
+
+Configure:
+- **IP Address** – receiving device
+- **Port** – UDP port
+- **Stream Name** – VBAN stream name
+
+This enables:
+- Streaming audio to another machine
+- Feeding a remote mixer
+- Network-based performance setups
+
+---
+
+## 🎧 Monitoring Output – Local vs VBAN
+
+### Monitor Audio Mode Switch
+
+![Monitor audio VBAN switch](images/new-monitor-audio-vband-switch.png)
+
+The **Monitoring Output** (used for previews in Edit Mode) also supports:
+
+- **Local** monitoring
+- **VBAN** monitoring
+
+---
+
+### Monitoring Output (Local Mode)
 
 ![Monitoring output setup](images/setup-audio-monitoring.png)
 
 - Optional preview output
 - Used when previewing pads in Edit Mode
+
+---
+
+### Monitoring Output (VBAN Mode)
+
+In **VBAN** mode, preview audio is sent over the network instead of to a local device.
+
+This is useful for:
+- Remote cue monitoring
+- Headless systems
+- Distributed setups
+
+---
+
+## 🌐 VBAN In / Out / Monitoring Overview
+
+![VBAN in out and monitoring](images/setup-vband-in-out-and-monitor.png)
+
+When VBAN is enabled, each channel shows its own IP, port, and stream fields.
+
+Key points:
+- Inputs receive audio
+- Outputs send audio
+- Monitoring can be independent
+- All paths are configured separately
+
+---
+
+## 🔀 Mixing Local and VBAN (Advanced)
+
+![VBAN mix and match](images/setup-vband-mix-match.png)
+
+Echopad allows **full mix-and-match routing**, for example:
+
+- Capture from **VBAN**, play out **locally**
+- Capture from **local mic**, send to **VBAN**
+- Monitor locally while outputting to VBAN
+- Monitor via VBAN while outputting locally
+
+There are **no restrictions** forcing all channels to use the same mode.
 
 ---
 
@@ -101,6 +226,8 @@ From here you can:
 - Select Input 1 or Input 2
 - Define which input Echo Mode captures from
 
+Input selection respects **Local / VBAN mode** chosen in global settings.
+
 ---
 
 ## 7️⃣ Per-Pad Settings – Echo & Drop Folder
@@ -141,17 +268,19 @@ Pads now:
 - Play audio
 - Capture live audio if armed
 - Respond to MIDI and keyboard triggers
+- Route audio according to Local / VBAN settings
 
 ---
 
 ## 🔁 Typical Workflow
 
-1. Configure audio and MIDI
-2. Enter Edit Mode
-3. Configure pads and Echo Mode
-4. Trim audio if needed
-5. Exit Edit Mode
-6. Perform live
+1. Configure audio inputs, outputs, and monitoring (Local or VBAN)
+2. Configure MIDI
+3. Enter Edit Mode
+4. Configure pads and Echo Mode
+5. Trim audio if needed
+6. Exit Edit Mode
+7. Perform live
 
 ---
 
@@ -161,10 +290,16 @@ All configuration is saved automatically to:
 
 echopad.settings.json
 
+
+
 No manual saving is required.
 
 ---
 
 ## ✅ Setup Complete
 
-Echopad is now ready for daily use and live performance.
+Echopad is now ready for:
+- Local performance
+- Networked audio workflows
+- Hybrid VBAN + local setups
+- Live streaming and capture

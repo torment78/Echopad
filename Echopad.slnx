@@ -9,6 +9,9 @@
     <File Path="docs/images/edit-per-pad-window-pick-echo-mode.png" />
     <File Path="docs/images/edit-per-pad-window-pick-folder-mode.png" />
     <File Path="docs/images/edit-per-pad.png" />
+    <File Path="docs/images/new-input-audio-vban-switch.png" />
+    <File Path="docs/images/new-monitor-audio-vban-switch.png" />
+    <File Path="docs/images/new-output-audio-vban-switch.png" />
     <File Path="docs/images/pad-grid.png" />
     <File Path="docs/images/right-click-pad.png" />
     <File Path="docs/images/setup-audio-input.png" />
@@ -16,6 +19,8 @@
     <File Path="docs/images/setup-audio-output.png" />
     <File Path="docs/images/setup-midi-input.png" />
     <File Path="docs/images/setup-midi-return.png" />
+    <File Path="docs/images/setup-vban-in-out-and-monitor.png" />
+    <File Path="docs/images/setup-vban-mix-match.png" />
     <File Path="docs/images/trim-in.png" />
     <File Path="docs/images/trim-out.png" />
   </Folder>

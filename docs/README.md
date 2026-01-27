@@ -2,7 +2,7 @@
 
 Echopad is a real-time audio pad sampler designed for **live performance, streaming and rapid audio interaction**.
 
-It focuses on speed predictability and minimal UI friction - no timelines, no tracks, no DAW-style complexity.
+It focuses on speed, predictability and minimal UI friction — no timelines, no tracks, no DAW-style complexity.
 
 ---
 
@@ -63,7 +63,7 @@ Configuration changes are only possible in Edit Mode.
 
 ## 🎙️ Echo Mode (Live Capture)
 
-Echo Mode continuously buffers live audio from an input device.
+Echo Mode continuously buffers live audio from an input source.
 
 When an **armed, empty pad** is triggered:
 - The last buffered audio is written to disk
@@ -75,6 +75,47 @@ This allows:
 - Voice capture
 - Live stream sound effects
 - Reactive sampling
+
+Echo Mode works with both **local audio devices** and **network-based audio sources** (see VBAN below).
+
+---
+
+## 🌐 VBAN Audio Routing (Network Audio)
+
+Echopad supports **VBAN audio streaming**, allowing audio to be routed **over the network** instead of using only local devices.
+
+VBAN can be used on:
+- **Audio Inputs** (VBAN Receive)
+- **Audio Outputs** (VBAN Transmit)
+
+This makes Echopad suitable for:
+- Multi-PC streaming setups
+- Remote audio capture
+- Network-based monitoring
+- Routing audio between applications or machines
+
+### VBAN Inputs
+An input can be set to **VBAN** instead of Local.
+
+In this mode:
+- Echopad listens on a UDP port
+- Receives audio from a VBAN sender
+- Feeds the stream into Echo Mode and live meters
+
+### VBAN Outputs
+An output can be set to **VBAN** instead of Local.
+
+In this mode:
+- Pad playback is streamed as VBAN audio
+- Audio is sent in real time over UDP
+- Sample rate and channel count follow the source material
+
+Local and VBAN routing can be mixed freely:
+- Local input → VBAN output
+- VBAN input → Local output
+- VBAN input → VBAN output
+
+Switching modes is handled live and safely.
 
 ---
 
@@ -104,6 +145,9 @@ Each pad can reflect:
 - Active state
 - Playing state
 - Cleared state
+- Armed (input-specific LED values)
+
+This allows tight integration with MIDI controllers.
 
 ---
 
@@ -132,6 +176,7 @@ Key properties:
 ## 🚧 Status
 
 - Core functionality stable
+- VBAN routing fully implemented and tested
 - Actively developed
 - Installer planned (Inno Setup)
 
