@@ -601,13 +601,15 @@ namespace Echopad.App
                 var learn = _pendingMidiLearn;
                 if (learn != null)
                 {
-                    // Traktor F1 press is 127, release is 0
                     var learned = BuildMidiLearnBindText(ev);
                     if (string.IsNullOrWhiteSpace(learned))
                         return;
 
+                    string rawHex = BuildRawHexFromMidiEvent(ev);
+
                     _pendingMidiLearn = null; // clear pending BEFORE invoking
-                    learn(learned);
+
+                    learn($"{learned}|RAW:{rawHex}");
                     return;
                 }
 
@@ -647,9 +649,10 @@ namespace Echopad.App
             }
         }
 
-        private static string? BuildMidiLearnBindText(MidiEvent ev)
+        private static string? BuildMidiLearnBindText(NAudio.Midi.MidiEvent ev)
+
         {
-            // Stored as HUMAN channel 1..16 (matches NAudio Channel)
+            // Stored as HUMAN channel 1..16
             // NOTE:ch:num:min
             // CC:ch:num:min
             // PC:ch:num:min
@@ -676,6 +679,7 @@ namespace Echopad.App
                     return null;
             }
         }
+
 
         private static MidiBind? TryParseMidiBind(string? text)
         {
@@ -720,7 +724,7 @@ namespace Echopad.App
             return null;
         }
 
-        private static bool DoesEventMatchBind(MidiEvent ev, MidiBind bind)
+        private static bool DoesEventMatchBind(NAudio.Midi.MidiEvent ev, MidiBind bind)
         {
             switch (bind.Kind)
             {
@@ -758,7 +762,7 @@ namespace Echopad.App
         // =====================================================
         // MIDI ROUTING
         // =====================================================
-        private void HandleMidiEvent(MidiEvent ev)
+        private void HandleMidiEvent(NAudio.Midi.MidiEvent ev)
         {
             // A) Global actions
             if (TryHandleGlobalMidiActions(ev))
@@ -776,7 +780,7 @@ namespace Echopad.App
             }
         }
 
-        private bool TryHandleGlobalMidiActions(MidiEvent ev)
+        private bool TryHandleGlobalMidiActions(NAudio.Midi.MidiEvent ev)
         {
             var now = DateTime.UtcNow;
 
@@ -811,7 +815,7 @@ namespace Echopad.App
             return false;
         }
 
-        private bool TryHandlePadMidiTriggers(MidiEvent ev)
+        private bool TryHandlePadMidiTriggers(NAudio.Midi.MidiEvent ev)
         {
             if (_globalSettings.Pads == null || _globalSettings.Pads.Count == 0)
                 return false;

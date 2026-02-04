@@ -15,6 +15,7 @@ namespace Echopad.App.Settings
         private readonly PadModel _pad;
         private readonly SettingsService _settings;
         private GlobalSettings _global;
+        private readonly PadSettings _padSettings;
 
         public PadSettingsViewModel(PadModel pad, SettingsService settings)
         {
@@ -22,16 +23,16 @@ namespace Echopad.App.Settings
             _settings = settings;
 
             _global = _settings.Load();
-            var ps = _global.GetOrCreatePad(_pad.Index);
-
-            ApplyFromSettings(ps);
+            _padSettings = _global.GetOrCreatePad(_pad.Index);
+            ApplyFromSettings(_padSettings);
 
             // Prefer runtime trim if pad already loaded
             if (!string.IsNullOrWhiteSpace(_pad.ClipPath))
             {
                 ClipPath = _pad.ClipPath;
 
-                if (_pad.StartMs != ps.StartMs || _pad.EndMs != ps.EndMs)
+                if (_pad.StartMs != _padSettings.StartMs || _pad.EndMs != _padSettings.EndMs)
+
                 {
                     StartMs = _pad.StartMs;
                     EndMs = _pad.EndMs;
@@ -154,17 +155,39 @@ namespace Echopad.App.Settings
             }
         }
 
-        private string? _midiTriggerDisplay;
-        public string? MidiTriggerDisplay
+        public string? MidiTriggerRaw
         {
-            get => _midiTriggerDisplay;
+            get => _padSettings.MidiTriggerDisplay;
             set
             {
-                if (_midiTriggerDisplay == value) return;
-                _midiTriggerDisplay = value;
+                if (_padSettings.MidiTriggerDisplay == value)
+                    return;
+
+                _padSettings.MidiTriggerDisplay = value;
                 OnPropertyChanged();
+                OnPropertyChanged(nameof(MidiTriggerDisplay));
             }
         }
+
+        // READ-ONLY formatted display for UI
+        // READ-ONLY formatted display for UI
+        public string MidiTriggerDisplay
+        {
+            get
+            {
+                if (string.IsNullOrWhiteSpace(_padSettings.MidiTriggerDisplay))
+                    return "";
+
+                var parts = _padSettings.MidiTriggerDisplay.Split("|RAW:", StringSplitOptions.RemoveEmptyEntries);
+
+                if (parts.Length == 2)
+                    return $"{parts[0]}  [{parts[1]}]";
+
+                return parts[0];
+            }
+        }
+
+
 
         // This is referenced by your PadSettingsWindow XAML (Listening... trigger).
         private bool _isMidiLearning;
@@ -206,7 +229,13 @@ namespace Echopad.App.Settings
                 OnPropertyChanged();
             }
         }
-
+        public string MidiLedActiveEntry
+        {
+            get => !string.IsNullOrWhiteSpace(_padSettings.MidiLedActiveRaw)
+                ? _padSettings.MidiLedActiveRaw!
+                : _midiLedActiveValue.ToString();
+            set => ApplyLedEntry(value, kind: "Active");
+        }
         private bool _midiLedRunningEnabled;
         public bool MidiLedRunningEnabled
         {
@@ -230,6 +259,20 @@ namespace Echopad.App.Settings
                 _midiLedRunningValue = value;
                 OnPropertyChanged();
             }
+        }
+        public string MidiLedRunningEntry
+        {
+            get => !string.IsNullOrWhiteSpace(_padSettings.MidiLedRunningRaw)
+                ? _padSettings.MidiLedRunningRaw!
+                : _midiLedRunningValue.ToString();
+            set => ApplyLedEntry(value, kind: "Running");
+        }
+        public string MidiLedClearEntry
+        {
+            get => !string.IsNullOrWhiteSpace(_padSettings.MidiLedClearRaw)
+                ? _padSettings.MidiLedClearRaw!
+                : _midiLedClearValue.ToString();
+            set => ApplyLedEntry(value, kind: "Clear");
         }
 
         private bool _midiLedClearEnabled;
@@ -371,8 +414,7 @@ namespace Echopad.App.Settings
             ps.PreviewToMonitor = PreviewToMonitor;
 
             ps.PadHotkey = PadHotkey;
-            ps.MidiTriggerDisplay = MidiTriggerDisplay;
-
+            ps.MidiTriggerDisplay = MidiTriggerRaw;
             ps.MidiLedActiveEnabled = MidiLedActiveEnabled;
             ps.MidiLedActiveValue = MidiLedActiveValue;
             ps.MidiLedRunningEnabled = MidiLedRunningEnabled;
@@ -403,7 +445,7 @@ namespace Echopad.App.Settings
             PreviewToMonitor = ps.PreviewToMonitor;
 
             PadHotkey = ps.PadHotkey;
-            MidiTriggerDisplay = ps.MidiTriggerDisplay;
+            MidiTriggerRaw = ps.MidiTriggerDisplay;
 
             MidiLedActiveEnabled = ps.MidiLedActiveEnabled;
             MidiLedActiveValue = ps.MidiLedActiveValue;
@@ -450,7 +492,74 @@ namespace Echopad.App.Settings
         }
 
         private static int Clamp7(int v) => Math.Clamp(v, 0, 127);
+        private void ApplyLedEntry(string? text, string kind)
+        {
+            text ??= "";
+            text = text.Trim();
 
+            // blank -> clear raw override (keep numeric)
+            if (text.Length == 0)
+            {
+                SetRaw(kind, null);
+                OnPropertyChanged(GetEntryName(kind));
+                return;
+            }
+
+            // If numeric, treat as value and clear raw override
+            if (int.TryParse(text, out var n))
+            {
+                n = Clamp7(n);
+
+                switch (kind)
+                {
+                    case "Active":
+                        MidiLedActiveValue = n;         // uses Clamp7 internally
+                        _padSettings.MidiLedActiveRaw = null;
+                        break;
+                        OnPropertyChanged(nameof(MidiLedActiveValue));
+
+
+                    case "Running":
+                        MidiLedRunningValue = n;
+                        _padSettings.MidiLedRunningRaw = null;
+                        break;
+                        OnPropertyChanged(nameof(MidiLedActiveValue));
+
+
+                    case "Clear":
+                        MidiLedClearValue = n;
+                        _padSettings.MidiLedClearRaw = null;
+                        break;
+                        OnPropertyChanged(nameof(MidiLedActiveValue));
+
+                }
+
+                OnPropertyChanged(GetEntryName(kind));
+                return;
+            }
+
+            // Otherwise treat as RAW (hex/tokens)
+            SetRaw(kind, text);
+            OnPropertyChanged(GetEntryName(kind));
+        }
+
+        private void SetRaw(string kind, string? raw)
+        {
+            switch (kind)
+            {
+                case "Active": _padSettings.MidiLedActiveRaw = raw; break;
+                case "Running": _padSettings.MidiLedRunningRaw = raw; break;
+                case "Clear": _padSettings.MidiLedClearRaw = raw; break;
+            }
+        }
+
+        private static string GetEntryName(string kind) => kind switch
+        {
+            "Active" => nameof(MidiLedActiveEntry),
+            "Running" => nameof(MidiLedRunningEntry),
+            "Clear" => nameof(MidiLedClearEntry),
+            _ => ""
+        };
         private static TimeSpan ReadDuration(string path)
         {
             try { using var r = new AudioFileReader(path); return r.TotalTime; }

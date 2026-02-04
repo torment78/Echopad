@@ -95,13 +95,15 @@ namespace Echopad.App.Settings
             if (sender is Button b)
                 b.IsEnabled = false;
 
-            _vm.MidiTriggerDisplay = "Learning...";
+            _vm.MidiTriggerRaw = "Learning...";
+
 
             var mw = Application.Current?.MainWindow;
             if (mw == null)
             {
                 EndLearnUi(sender as Button);
-                _vm.MidiTriggerDisplay = "Learn:Failed (no MainWindow)";
+                _vm.MidiTriggerRaw = "Learn:Failed (no MainWindow)";
+
                 return;
             }
 
@@ -109,17 +111,18 @@ namespace Echopad.App.Settings
             {
                 Dispatcher.Invoke(() =>
                 {
-                    _vm.MidiTriggerDisplay = bind;
+                    _vm.MidiTriggerRaw = bind;
                     EndLearnUi(sender as Button);
                 }, DispatcherPriority.Send);
             };
+
 
             Action onCanceled = () =>
             {
                 Dispatcher.Invoke(() =>
                 {
-                    if (string.Equals(_vm.MidiTriggerDisplay, "Learning...", StringComparison.OrdinalIgnoreCase))
-                        _vm.MidiTriggerDisplay = "Learn:Canceled";
+                    if (string.Equals(_vm.MidiTriggerRaw, "Learning...", StringComparison.OrdinalIgnoreCase))
+                        _vm.MidiTriggerRaw = "Learn:Canceled";
                     EndLearnUi(sender as Button);
                 }, DispatcherPriority.Send);
             };
@@ -127,7 +130,8 @@ namespace Echopad.App.Settings
             if (!TryInvokeMainWindowMidiLearn((Window)mw, onLearned, onCanceled))
             {
                 EndLearnUi(sender as Button);
-                _vm.MidiTriggerDisplay = "Learn:Failed (no learn hook)";
+                _vm.MidiTriggerRaw = "Learn:Failed (no learn hook)";
+
             }
         }
 

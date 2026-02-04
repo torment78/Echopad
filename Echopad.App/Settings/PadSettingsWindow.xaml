@@ -325,7 +325,8 @@
                                 </Grid.ColumnDefinitions>
 
                                 <TextBox Grid.Column="0"
-                                         Text="{Binding MidiTriggerDisplay}"
+                                         Text="{Binding MidiTriggerRaw, UpdateSourceTrigger=PropertyChanged}"
+
                                          IsReadOnly="True"
                                          Opacity="0.9"/>
 
@@ -360,7 +361,8 @@
                                     <ColumnDefinition Width="*"/>
                                 </Grid.ColumnDefinitions>
                                 <TextBlock Grid.Column="0" Text="Active:" VerticalAlignment="Center"/>
-                                <TextBox Grid.Column="1" Text="{Binding MidiLedActiveValue}"/>
+                                <TextBox Grid.Column="1" Text="{Binding MidiLedActiveEntry, UpdateSourceTrigger=PropertyChanged}"/>
+
                             </Grid>
 
                             <Grid Margin="0,0,0,8">
@@ -369,7 +371,7 @@
                                     <ColumnDefinition Width="*"/>
                                 </Grid.ColumnDefinitions>
                                 <TextBlock Grid.Column="0" Text="Running:" VerticalAlignment="Center"/>
-                                <TextBox Grid.Column="1" Text="{Binding MidiLedRunningValue}"/>
+                                <TextBox Grid.Column="1" Text="{Binding MidiLedRunningEntry, UpdateSourceTrigger=PropertyChanged}"/>
                             </Grid>
 
                             <Grid>
@@ -378,7 +380,7 @@
                                     <ColumnDefinition Width="*"/>
                                 </Grid.ColumnDefinitions>
                                 <TextBlock Grid.Column="0" Text="Clear:" VerticalAlignment="Center"/>
-                                <TextBox Grid.Column="1" Text="{Binding MidiLedClearValue}"/>
+                                <TextBox Grid.Column="1" Text="{Binding MidiLedClearEntry, UpdateSourceTrigger=PropertyChanged}"/>
                             </Grid>
 
                         </StackPanel>
