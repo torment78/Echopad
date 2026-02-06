@@ -1,0 +1,19 @@
+<UserControl x:Class="Echopad.App.Settings.SpectrogramTrimControl"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             MinHeight="80"
+             Background="Transparent">
+
+    <Grid Background="Transparent">
+        <!-- Spectrogram image -->
+        <Image x:Name="Img" Stretch="Fill" SnapsToDevicePixels="True"/>
+
+        <!-- Dark cut regions + handles -->
+        <Canvas x:Name="Overlay" Background="Transparent">
+            <Rectangle x:Name="CutLeft" />
+            <Rectangle x:Name="CutRight" />
+            <Line x:Name="InLine" />
+            <Line x:Name="OutLine" />
+        </Canvas>
+    </Grid>
+</UserControl>

@@ -16,7 +16,7 @@ namespace Echopad.App.Settings
         private readonly SettingsService _settings;
         private GlobalSettings _global;
         private readonly PadSettings _padSettings;
-
+        public int ClipDurationMs => (int)_pad.ClipDuration.TotalMilliseconds;
         public PadSettingsViewModel(PadModel pad, SettingsService settings)
         {
             _pad = pad;
@@ -370,6 +370,9 @@ namespace Echopad.App.Settings
             _pad.ClipDuration = ReadDuration(path);
             DurationText = FormatDuration(_pad.ClipDuration);
 
+            // NEW:
+            OnPropertyChanged(nameof(ClipDurationMs));
+
             var total = (int)_pad.ClipDuration.TotalMilliseconds;
             StartMs = 0;
             EndMs = total;
@@ -377,6 +380,7 @@ namespace Echopad.App.Settings
             Clamp();
             ApplyToPadModel();
         }
+
 
         public void ResetTrim()
         {

@@ -7,10 +7,12 @@
     xmlns:local="clr-namespace:Echopad.App.Settings"
     mc:Ignorable="d"
     Title="Pad Settings"
-    MinWidth="690"
-    MinHeight="995"
-    Width="690"
-    Height="995"
+    Width="1100"
+    Height="960"
+    MaxWidth="1100"
+    MaxHeight="960"
+    MinWidth="800"
+    MinHeight="700"
     WindowStartupLocation="CenterOwner"
     Background="{DynamicResource BgBrush}"
     Foreground="{DynamicResource TextBrush}">
@@ -28,7 +30,8 @@
         <SolidColorBrush x:Key="ControlPressedBrush" Color="#1D1D1D"/>
         <SolidColorBrush x:Key="TextBrush" Color="#EAEAEA"/>
         <SolidColorBrush x:Key="MutedTextBrush" Color="#B8B8B8"/>
-
+        <SolidColorBrush x:Key="WaveformBorderBrush" Color="#1B1B1B"/>
+        <!-- Default GroupBox style (kept for safety; specific ones are overridden below) -->
         <Style TargetType="{x:Type GroupBox}">
             <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
             <Setter Property="BorderBrush" Value="{StaticResource ControlBorderBrush}"/>
@@ -56,41 +59,47 @@
             <Setter Property="Padding" Value="6"/>
         </Style>
 
-        <!-- Small up/down buttons for numeric nudges -->
-        <Style x:Key="SpinButtonStyle" TargetType="{x:Type RepeatButton}">
-            <Setter Property="Width" Value="26"/>
-            <Setter Property="Height" Value="16"/>
-            <Setter Property="Margin" Value="4,0,0,0"/>
-            <Setter Property="Background" Value="{StaticResource ControlBgBrush}"/>
+        <!-- NEW: Flat section header (replaces GroupBox chrome for compact layout) -->
+        <Style x:Key="FlatSectionHeader" TargetType="{x:Type TextBlock}">
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Margin" Value="0,0,0,4"/>
             <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
+        </Style>
+
+        <!-- NEW: Flat "card" container for top area -->
+        <Style x:Key="TopCardBorderStyle" TargetType="{x:Type Border}">
+            <Setter Property="Background" Value="{StaticResource PanelBrush}"/>
             <Setter Property="BorderBrush" Value="{StaticResource ControlBorderBrush}"/>
             <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="Cursor" Value="Hand"/>
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="{x:Type RepeatButton}">
-                        <Border CornerRadius="4"
-                                Background="{TemplateBinding Background}"
-                                BorderBrush="{TemplateBinding BorderBrush}"
-                                BorderThickness="{TemplateBinding BorderThickness}">
-                            <ContentPresenter HorizontalAlignment="Center"
-                                              VerticalAlignment="Center"/>
-                        </Border>
-                        <ControlTemplate.Triggers>
-                            <Trigger Property="IsMouseOver" Value="True">
-                                <Setter Property="Background" Value="{StaticResource ControlHoverBrush}"/>
-                                <Setter Property="BorderBrush" Value="#3A4D68"/>
-                            </Trigger>
-                            <Trigger Property="IsPressed" Value="True">
-                                <Setter Property="Background" Value="{StaticResource ControlPressedBrush}"/>
-                            </Trigger>
-                            <Trigger Property="IsEnabled" Value="False">
-                                <Setter Property="Opacity" Value="0.45"/>
-                            </Trigger>
-                        </ControlTemplate.Triggers>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
+            <Setter Property="CornerRadius" Value="10"/>
+            <Setter Property="Padding" Value="10"/>
+            <Setter Property="Margin" Value="0,0,0,10"/>
+        </Style>
+
+        <!-- NEW: tiny time entry box (keeps same colors as global TextBox style) -->
+        <Style x:Key="TinyTimeBox" TargetType="{x:Type TextBox}">
+            <Setter Property="Height" Value="26"/>
+            <Setter Property="Padding" Value="6,2"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+        </Style>
+
+        <!-- NEW: IN/OUT should match the same dark/white system, but borderless -->
+        <Style x:Key="TrimInOutBox" TargetType="{x:Type TextBox}" BasedOn="{StaticResource TinyTimeBox}">
+            <Setter Property="Background" Value="{StaticResource ControlBgBrush}"/>
+            <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
+            <Setter Property="BorderThickness" Value="0"/>
+        </Style>
+
+        <!-- NEW: Flat GroupBox template used ONLY where you asked (keeps header, removes outline) -->
+        <Style x:Key="FlatGroupBoxNoBorder" TargetType="{x:Type GroupBox}">
+            <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
+            <Setter Property="Background" Value="{StaticResource PanelBrush}"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="0"/>
+            <!-- slightly tighter default margin between sections -->
+            <Setter Property="Margin" Value="0,0,0,8"/>
         </Style>
     </Window.Resources>
 
@@ -101,221 +110,273 @@
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
-        <!-- HEADER -->
+        <!-- HEADER (tighter gap to top card) -->
         <TextBlock Text="Per-Pad Settings"
                    FontSize="22"
                    FontWeight="Bold"
-                   Margin="0,0,0,16"/>
+                   Margin="0,0,0,4"/>
 
         <!-- CONTENT -->
         <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
             <StackPanel>
 
-                <!-- AUDIO FILE -->
-                <GroupBox Header="Audio File" Margin="0,0,0,12" Height="130">
-                    <Grid Margin="12">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="Auto"/>
-                        </Grid.ColumnDefinitions>
+                <!-- TOP CARD: Audio File + Trim (tight) -->
+                <Border Style="{StaticResource TopCardBorderStyle}">
+                    <Grid>
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto"/>
                             <RowDefinition Height="Auto"/>
                         </Grid.RowDefinitions>
 
-                        <TextBox Grid.Row="0" Grid.Column="0"
-                                 Text="{Binding ClipPath}"
-                                 IsReadOnly="True"/>
+                        <!-- ===== Audio File (flat, tight) ===== -->
+                        <StackPanel Grid.Row="0">
+                            <TextBlock Text="Audio File"
+                                       Style="{StaticResource FlatSectionHeader}"
+                                       Margin="0,0,0,2"/>
 
-                        <Button Grid.Row="0" Grid.Column="1"
-                                Margin="8,0,0,0"
-                                Content="Browse…"
-                                Style="{StaticResource EchopadTopButtonStyle}"
-                                Click="BrowseAudio_Click"/>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
 
-                        <TextBlock Grid.Row="1" Grid.Column="0"
-                                   Margin="0,8,0,0"
-                                   Opacity="0.85"
-                                   Text="{Binding DurationText}" />
-                    </Grid>
-                </GroupBox>
+                                <TextBox Grid.Row="0" Grid.Column="0"
+                                         Text="{Binding ClipPath}"
+                                         IsReadOnly="True"/>
 
-                <!-- TRIM -->
-                <GroupBox Header="Trim" Margin="0,0,0,12">
-                    <Grid Margin="12">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="Auto"/>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="Auto"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto"/>
-                            <RowDefinition Height="Auto"/>
-                        </Grid.RowDefinitions>
+                                <Button Grid.Row="0" Grid.Column="1"
+                                        Margin="8,0,0,0"
+                                        Content="Browse…"
+                                        Style="{StaticResource EchopadTopButtonStyle}"
+                                        Click="BrowseAudio_Click"/>
 
-                        <!-- Start -->
-                        <TextBlock Grid.Row="0" Grid.Column="0"
-                                   Text="Start (ms):"
-                                   VerticalAlignment="Center"/>
-
-                        <Grid Grid.Row="0" Grid.Column="1" Margin="6,0,12,0">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="Auto"/>
-                            </Grid.ColumnDefinitions>
-
-                            <TextBox Grid.Column="0"
-                                     Text="{Binding StartMs}"
-                                     VerticalContentAlignment="Center"/>
-
-                            <StackPanel Grid.Column="1" Orientation="Vertical" VerticalAlignment="Center" Margin="6,0,0,0">
-                                <RepeatButton Style="{StaticResource SpinButtonStyle}"
-                                              Content="▲"
-                                              Click="StartMs_Up_Click"/>
-                                <RepeatButton Style="{StaticResource SpinButtonStyle}"
-                                              Content="▼"
-                                              Margin="4,3,0,0"
-                                              Click="StartMs_Down_Click"/>
-                            </StackPanel>
-                        </Grid>
-
-                        <!-- End -->
-                        <TextBlock Grid.Row="0" Grid.Column="2"
-                                   Text="End (ms):"
-                                   VerticalAlignment="Center"/>
-
-                        <Grid Grid.Row="0" Grid.Column="3" Margin="6,0,0,0">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="Auto"/>
-                            </Grid.ColumnDefinitions>
-
-                            <TextBox Grid.Column="0"
-                                     Text="{Binding EndMs}"
-                                     VerticalContentAlignment="Center"/>
-
-                            <StackPanel Grid.Column="1" Orientation="Vertical" VerticalAlignment="Center" Margin="6,0,0,0">
-                                <RepeatButton Style="{StaticResource SpinButtonStyle}"
-                                              Content="▲"
-                                              Click="EndMs_Up_Click"/>
-                                <RepeatButton Style="{StaticResource SpinButtonStyle}"
-                                              Content="▼"
-                                              Margin="4,3,0,0"
-                                              Click="EndMs_Down_Click"/>
-                            </StackPanel>
-                        </Grid>
-
-                        <Button Grid.Row="1" Grid.ColumnSpan="4"
-                                Margin="0,12,0,0"
-                                Content="Reset Trim"
-                                Style="{StaticResource EchopadTopButtonStyle}"
-                                Click="ResetTrim_Click"/>
-                    </Grid>
-                </GroupBox>
-
-                <!-- INPUT SOURCE + PREVIEW -->
-                <GroupBox Header="Routing" Margin="0,0,345,12" Width="292" Height="179">
-                    <StackPanel Margin="12">
-
-                        <TextBlock Text="Input Source (normal playback):" Opacity="0.85" Margin="0,0,0,6"/>
-
-                        <StackPanel Orientation="Horizontal" Margin="0,0,0,10" Width="218" Height="54">
-                            <RadioButton Content="Input 1"
-                                         GroupName="InputSource"
-                                         Margin="0,0,16,40"
-                                         IsChecked="{Binding InputSource, Converter={StaticResource IntEqualsConverter}, ConverterParameter=1}"
-                                         Height="16"/>
-
-                            <RadioButton Content="Input 2"
-                                         GroupName="InputSource"
-                                         Margin="-85,0,0,0"
-                                         IsChecked="{Binding InputSource, Converter={StaticResource IntEqualsConverter}, ConverterParameter=2}"
-                                         Height="14" Width="58"/>
+                                <TextBlock Grid.Row="1" Grid.Column="0"
+                                           Margin="0,6,0,0"
+                                           Opacity="0.85"
+                                           Text="{Binding DurationText}" />
+                            </Grid>
                         </StackPanel>
 
-                        <CheckBox Margin="0,-15,0,12"
-                                  IsChecked="{Binding PreviewToMonitor}"
-                                  Height="41">
-                            <CheckBox.Content>
-                                <TextBlock TextWrapping="Wrap">
-                                    Play to Monitor Output<LineBreak/>
-                                    in Edit Mode
-                                </TextBlock>
-                            </CheckBox.Content>
-                        </CheckBox>
-                    </StackPanel>
-                </GroupBox>
-
-                <!-- PER-PAD UI COLORS -->
-                <GroupBox Header="Pad Colors (Per Pad)" Margin="0,-190,-300,10" Width="338" Height="178">
-                    <Grid Margin="12">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="140"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto"/>
-                            <RowDefinition Height="Auto"/>
-                            <RowDefinition Height="Auto"/>
-                        </Grid.RowDefinitions>
-
-                        <TextBlock Grid.Row="0" Grid.ColumnSpan="2"
-                                   Opacity="0.75"
-                                   TextWrapping="Wrap"
-                                   Text="Per-pad overrides (hex). Leave blank to use defaults. Clear/Empty stays gray." />
-
-                        <!-- Active -->
-                        <TextBlock Grid.Row="1" Grid.Column="0" Text="Active (Loaded):" VerticalAlignment="Top" Margin="0,23,47,0"/>
-                        <Grid Grid.Row="1" Grid.Column="1" Margin="0,10,0,0">
+                        <!-- ===== Trim (flat, compact, aligned) ===== -->
+                        <Grid Grid.Row="1" Margin="0,6,0,0">
                             <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="110" />
                             </Grid.ColumnDefinitions>
 
-                            <TextBox Grid.Column="0"
-                                     Text="{Binding UiActiveHex, UpdateSourceTrigger=PropertyChanged}"
-                                     HorizontalContentAlignment="Center" Margin="-39,0,0,0"/>
+                            <!-- Left side: Trim header + waveform placeholder -->
+                            <Grid Grid.Column="0" Margin="0,0,10,0">
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="*"/>
+                                </Grid.RowDefinitions>
 
-                            <Button Grid.Column="1"
-                                    Margin="8,0,0,0"
-                                    Content="Pick…"
-                                    Style="{StaticResource EchopadTopButtonStyle}"
-                                    Click="PickActiveColor_Click"/>
-                        </Grid>
+                                <TextBlock Grid.Row="0"
+                                           Text="Trim"
+                                           Style="{StaticResource FlatSectionHeader}"
+                                           Margin="0,0,0,6"/>
+                            </Grid>
 
-                        <!-- Running -->
-                        <TextBlock Grid.Row="2" Grid.Column="0" Text="Running (Playing):" VerticalAlignment="Top" Margin="0,22,31,0"/>
-                        <Grid Grid.Row="2" Grid.Column="1" Margin="0,10,0,0">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="Auto"/>
-                            </Grid.ColumnDefinitions>
+                            <!-- Shared alignment grid -->
+                            <Grid Grid.Column="0" Grid.ColumnSpan="2" Margin="0,22,0,0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="110"/>
+                                </Grid.ColumnDefinitions>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
 
-                            <TextBox Grid.Column="0"
-                                     Text="{Binding UiRunningHex, UpdateSourceTrigger=PropertyChanged}"
-                                     HorizontalContentAlignment="Center" Margin="-40,0,0,0"/>
+                                <!-- LEFT: placeholder  -->
+                                <Border Grid.Row="0" Grid.RowSpan="3" Grid.Column="0"
+        Height="120"
+        CornerRadius="8"
+        Background="{StaticResource ControlBgBrush}"
+        BorderBrush="{StaticResource WaveformBorderBrush}"
+        BorderThickness="1"
+        Opacity="0.95"
+        Margin="0,0,10,0">
 
-                            <Button Grid.Column="1"
-                                    Margin="8,0,0,0"
-                                    Content="Pick…"
-                                    Style="{StaticResource EchopadTopButtonStyle}"
-                                    Click="PickRunningColor_Click"/>
+                                    <!-- NEW: spectro + trim handles -->
+                                    <local:SpectrogramTrimControl
+        Margin="6"
+        AudioPath="{Binding ClipPath}"
+        DurationMs="{Binding ClipDurationMs}"
+        StartMs="{Binding StartMs, Mode=TwoWay}"
+        EndMs="{Binding EndMs, Mode=TwoWay}"/>
+                                </Border>
+
+                                <!-- RIGHT: IN -->
+                                <StackPanel Grid.Row="0" Grid.Column="1">
+                                    <TextBlock Text="IN" Opacity="0.75" Margin="2,0,0,2" FontSize="11"/>
+                                    <TextBox Style="{StaticResource TrimInOutBox}"
+                                             Text="{Binding StartMs}"
+                                             HorizontalContentAlignment="Right"/>
+                                </StackPanel>
+
+                                <!-- RIGHT: OUT -->
+                                <StackPanel Grid.Row="1" Grid.Column="1" Margin="0,10,0,0">
+                                    <TextBlock Text="OUT" Opacity="0.75" Margin="2,0,0,2" FontSize="11"/>
+                                    <TextBox Style="{StaticResource TrimInOutBox}"
+                                             Text="{Binding EndMs}"
+                                             HorizontalContentAlignment="Right"/>
+                                </StackPanel>
+
+                                <!-- RIGHT: Reset -->
+                                <Button Grid.Row="2" Grid.Column="1"
+                                        Margin="0,10,0,0"
+                                        Height="26"
+                                        Padding="8,0"
+                                        FontSize="12"
+                                        Content="Reset"
+                                        Style="{StaticResource EchopadTopButtonStyle}"
+                                        Click="ResetTrim_Click"/>
+                            </Grid>
+
                         </Grid>
                     </Grid>
-                </GroupBox>
+                </Border>
 
-                <!-- MIDI FEEDBACK + SOURCE MODE (SPLIT) -->
-                <Grid Margin="0,0,0,12">
+                <!-- ROUTING + PAD COLORS (SIDE BY SIDE) -->
+                <Grid Margin="0,0,0,8">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="12"/>
+                        <ColumnDefinition Width="10"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+
+                    <!-- INPUT SOURCE + PREVIEW (LEFT) -->
+                    <GroupBox Grid.Column="0"
+             Header="Routing"
+             Style="{StaticResource FlatGroupBoxNoBorder}"
+             Margin="0"
+             Height="179">
+
+                        <StackPanel Margin="12">
+
+                            <TextBlock Text="Input Source (normal playback):" Opacity="0.85" Margin="0,0,0,6"/>
+
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,10" Width="218" Height="54">
+                                <RadioButton Content="Input 1"
+                             GroupName="InputSource"
+                             Margin="0,0,16,40"
+                             IsChecked="{Binding InputSource, Converter={StaticResource IntEqualsConverter}, ConverterParameter=1}"
+                             Height="16"/>
+
+                                <RadioButton Content="Input 2"
+                             GroupName="InputSource"
+                             Margin="-85,0,0,0"
+                             IsChecked="{Binding InputSource, Converter={StaticResource IntEqualsConverter}, ConverterParameter=2}"
+                             Height="14" Width="58"/>
+                            </StackPanel>
+
+                            <CheckBox Margin="0,-15,0,12"
+                      IsChecked="{Binding PreviewToMonitor}"
+                      Height="41">
+                                <CheckBox.Content>
+                                    <TextBlock TextWrapping="Wrap">
+                        Play to Monitor Output<LineBreak/>
+                        in Edit Mode
+                                    </TextBlock>
+                                </CheckBox.Content>
+                            </CheckBox>
+                        </StackPanel>
+                    </GroupBox>
+
+                    <!-- PER-PAD UI COLORS (RIGHT) -->
+                    <GroupBox Grid.Column="2"
+             Header="Pad Colors (Per Pad)"
+             Style="{StaticResource FlatGroupBoxNoBorder}"
+             Margin="0"
+             Height="178">
+
+                        <Grid Margin="12">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="140"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+
+                            <TextBlock Grid.Row="0" Grid.ColumnSpan="2"
+                       Opacity="0.75"
+                       TextWrapping="Wrap"
+                       Text="Per-pad overrides (hex). Leave blank to use defaults. Clear/Empty stays gray." />
+
+                            <!-- Active -->
+                            <TextBlock Grid.Row="1" Grid.Column="0"
+                       Text="Active (Loaded):"
+                       VerticalAlignment="Top"
+                       Margin="0,23,47,0"/>
+
+                            <Grid Grid.Row="1" Grid.Column="1" Margin="0,10,0,0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+
+                                <TextBox Grid.Column="0"
+                         Text="{Binding UiActiveHex, UpdateSourceTrigger=PropertyChanged}"
+                         HorizontalContentAlignment="Center"
+                         Margin="-39,0,0,0"/>
+
+                                <Button Grid.Column="1"
+                        Margin="8,0,0,0"
+                        Content="Pick…"
+                        Style="{StaticResource EchopadTopButtonStyle}"
+                        Click="PickActiveColor_Click"/>
+                            </Grid>
+
+                            <!-- Running -->
+                            <TextBlock Grid.Row="2" Grid.Column="0"
+                       Text="Running (Playing):"
+                       VerticalAlignment="Top"
+                       Margin="0,22,31,0"/>
+
+                            <Grid Grid.Row="2" Grid.Column="1" Margin="0,10,0,0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+
+                                <TextBox Grid.Column="0"
+                         Text="{Binding UiRunningHex, UpdateSourceTrigger=PropertyChanged}"
+                         HorizontalContentAlignment="Center"
+                         Margin="-40,0,0,0"/>
+
+                                <Button Grid.Column="1"
+                        Margin="8,0,0,0"
+                        Content="Pick…"
+                        Style="{StaticResource EchopadTopButtonStyle}"
+                        Click="PickRunningColor_Click"/>
+                            </Grid>
+                        </Grid>
+                    </GroupBox>
+                </Grid>
+
+
+                <!-- MIDI FEEDBACK + SOURCE MODE (tighten middle gap; NO content removed) -->
+                <Grid Margin="0,0,0,8">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="6"/>
                         <ColumnDefinition Width="*"/>
                     </Grid.ColumnDefinitions>
 
                     <!-- LEFT: MIDI feedback -->
-                    <GroupBox Grid.Column="0" Header="MIDI Feedback">
+                    <GroupBox Grid.Column="0"
+                             Header="MIDI Feedback"
+                             Style="{StaticResource FlatGroupBoxNoBorder}">
                         <StackPanel Margin="12">
 
                             <Grid Margin="0,0,0,10">
@@ -326,7 +387,6 @@
 
                                 <TextBox Grid.Column="0"
                                          Text="{Binding MidiTriggerRaw, UpdateSourceTrigger=PropertyChanged}"
-
                                          IsReadOnly="True"
                                          Opacity="0.9"/>
 
@@ -362,7 +422,6 @@
                                 </Grid.ColumnDefinitions>
                                 <TextBlock Grid.Column="0" Text="Active:" VerticalAlignment="Center"/>
                                 <TextBox Grid.Column="1" Text="{Binding MidiLedActiveEntry, UpdateSourceTrigger=PropertyChanged}"/>
-
                             </Grid>
 
                             <Grid Margin="0,0,0,8">
@@ -387,7 +446,9 @@
                     </GroupBox>
 
                     <!-- RIGHT: Source mode -->
-                    <GroupBox Grid.Column="2" Header="Source Mode">
+                    <GroupBox Grid.Column="2"
+                             Header="Source Mode"
+                             Style="{StaticResource FlatGroupBoxNoBorder}">
                         <StackPanel Margin="12">
                             <TextBlock Opacity="0.85"
                                        TextWrapping="Wrap"
@@ -409,7 +470,9 @@
                     </GroupBox>
                 </Grid>
 
-                <GroupBox Header="Pad Hotkey" Margin="0,0,0,12" Width="636">
+                <GroupBox Header="Pad Hotkey"
+                         Style="{StaticResource FlatGroupBoxNoBorder}"
+                         Margin="0,0,0,8">
                     <Grid Margin="12">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*"/>
