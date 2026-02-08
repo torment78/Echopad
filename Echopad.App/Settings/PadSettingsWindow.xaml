@@ -86,11 +86,11 @@
         </Style>
 
         <!-- NEW: IN/OUT should match the same dark/white system, but borderless -->
-        <Style x:Key="TrimInOutBox" TargetType="{x:Type TextBox}" BasedOn="{StaticResource TinyTimeBox}">
+        <!--<Style x:Key="TrimInOutBox" TargetType="{x:Type TextBox}" BasedOn="{StaticResource TinyTimeBox}">
             <Setter Property="Background" Value="{StaticResource ControlBgBrush}"/>
             <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
             <Setter Property="BorderThickness" Value="0"/>
-        </Style>
+        </Style> -->
 
         <!-- NEW: Flat GroupBox template used ONLY where you asked (keeps header, removes outline) -->
         <Style x:Key="FlatGroupBoxNoBorder" TargetType="{x:Type GroupBox}">
@@ -176,9 +176,9 @@
                                 </Grid.RowDefinitions>
 
                                 <TextBlock Grid.Row="0"
-                                           Text="Trim"
-                                           Style="{StaticResource FlatSectionHeader}"
-                                           Margin="0,0,0,6"/>
+                   Text="Trim"
+                   Style="{StaticResource FlatSectionHeader}"
+                   Margin="0,0,0,6"/>
                             </Grid>
 
                             <!-- Shared alignment grid -->
@@ -187,59 +187,142 @@
                                     <ColumnDefinition Width="*"/>
                                     <ColumnDefinition Width="110"/>
                                 </Grid.ColumnDefinitions>
+
+                                <!-- NEW: add one row for Play -->
                                 <Grid.RowDefinitions>
                                     <RowDefinition Height="Auto"/>
+                                    <!-- Play -->
                                     <RowDefinition Height="Auto"/>
+                                    <!-- IN -->
                                     <RowDefinition Height="Auto"/>
+                                    <!-- OUT -->
+                                    <RowDefinition Height="Auto"/>
+                                    <!-- Reset -->
                                 </Grid.RowDefinitions>
 
-                                <!-- LEFT: placeholder  -->
-                                <Border Grid.Row="0" Grid.RowSpan="3" Grid.Column="0"
-        Height="120"
-        CornerRadius="8"
-        Background="{StaticResource ControlBgBrush}"
-        BorderBrush="{StaticResource WaveformBorderBrush}"
-        BorderThickness="1"
-        Opacity="0.95"
-        Margin="0,0,10,0">
+                                <!-- LEFT: waveform/spectro placeholder + PLAYHEAD OVERLAY -->
+                                <Border Grid.Row="0"
+                Grid.RowSpan="4"
+                Grid.Column="0"
+                Height="120"
+                CornerRadius="8"
+                Background="{StaticResource ControlBgBrush}"
+                BorderBrush="{StaticResource WaveformBorderBrush}"
+                BorderThickness="1"
+                Opacity="0.95"
+                Margin="0,0,10,0">
 
-                                    <!-- NEW: spectro + trim handles -->
-                                    <local:SpectrogramTrimControl
+                                    <!-- IMPORTANT: overlay stack -->
+                                    <Grid>
+
+                                        <local:SpectrogramTrimControl x:Name="WaveHost"
+      Margin="6"
+      AudioPath="{Binding ClipPath}"
+      DurationMs="{Binding ClipDurationMs}"
+      StartMs="{Binding StartMs, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+      EndMs="{Binding EndMs, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+      PreviewMouseLeftButtonDown="WaveHost_PreviewMouseLeftButtonDown"
+      PreviewMouseRightButtonDown="WaveHost_PreviewMouseRightButtonDown"
+      PreviewMouseRightButtonUp="WaveHost_PreviewMouseRightButtonUp"
+      PreviewMouseMove="WaveHost_PreviewMouseMove"/>
+
+
+                                        <!-- Playhead overlay (drag surface + visuals) -->
+                                        <Canvas x:Name="PlayheadOverlay"
+        Panel.ZIndex="10"
+        Background="Transparent"
         Margin="6"
-        AudioPath="{Binding ClipPath}"
-        DurationMs="{Binding ClipDurationMs}"
-        StartMs="{Binding StartMs, Mode=TwoWay}"
-        EndMs="{Binding EndMs, Mode=TwoWay}"/>
+        HorizontalAlignment="Stretch"
+        VerticalAlignment="Stretch"
+        Width="{Binding ActualWidth, ElementName=WaveHost}"
+        Height="{Binding ActualHeight, ElementName=WaveHost}"
+        MouseLeftButtonDown="PlayheadOverlay_MouseLeftButtonDown"
+        MouseMove="PlayheadOverlay_MouseMove"
+        MouseLeftButtonUp="PlayheadOverlay_MouseLeftButtonUp">
+                                            
+
+                                            <!-- fat translucent body -->
+                                            <Rectangle x:Name="PlayheadBody"
+                               Width="8"
+                               Height="Auto"
+                               Opacity="0.28"
+                               RadiusX="2" RadiusY="2"
+                               Fill="{DynamicResource AccentBrush}"
+                               Canvas.Top="0"/>
+
+                                            <!-- thin bright core -->
+                                            <Rectangle x:Name="PlayheadCore"
+                               Width="2"
+                               Height="Auto"
+                               Opacity="0.95"
+                               RadiusX="1" RadiusY="1"
+                               Fill="{DynamicResource Accent2Brush}"
+                               Canvas.Top="0"/>
+
+                                            <!-- top triangle marker -->
+                                            <Polygon x:Name="PlayheadTopTri"
+                             Opacity="0.95"
+                             Fill="{DynamicResource Accent2Brush}"
+                             Points="0,0 10,0 5,6"/>
+
+                                            <!-- bottom triangle marker -->
+                                            <Polygon x:Name="PlayheadBotTri"
+                             Opacity="0.95"
+                             Fill="{DynamicResource Accent2Brush}"
+                             Points="0,6 10,6 5,0"/>
+
+                                            <!-- optional larger hit targets (transparent) -->
+                                            <Rectangle x:Name="PlayheadHitTop"
+                               Width="26"
+                               Height="18"
+                               Opacity="0"
+                               Fill="White"/>
+
+                                            <Rectangle x:Name="PlayheadHitBot"
+                               Width="26"
+                               Height="18"
+                               Opacity="0"
+                               Fill="White"/>
+                                        </Canvas>
+
+                                    </Grid>
                                 </Border>
 
+                                <!-- RIGHT: Play (same size as Reset) -->
+                                <Button Grid.Row="0" Grid.Column="1"
+                Height="26"
+                Padding="8,0"
+                FontSize="12"
+                Content="{Binding PreviewPlayButtonText}"
+                Style="{StaticResource EchopadTopButtonStyle}"
+                Click="PreviewPlayPause_Click"/>
+
                                 <!-- RIGHT: IN -->
-                                <StackPanel Grid.Row="0" Grid.Column="1">
-                                    <TextBlock Text="IN" Opacity="0.75" Margin="2,0,0,2" FontSize="11"/>
-                                    <TextBox Style="{StaticResource TrimInOutBox}"
-                                             Text="{Binding StartMs}"
-                                             HorizontalContentAlignment="Right"/>
-                                </StackPanel>
+                                <TextBox Grid.Row="1" Grid.Column="1" Margin="0,2,0,0"
+                 Style="{StaticResource TrimInOutBox_Label}"
+                 Tag="IN"
+                 Text="{Binding StartMs, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged, StringFormat={}{0}}"
+                 HorizontalContentAlignment="Right"/>
 
                                 <!-- RIGHT: OUT -->
-                                <StackPanel Grid.Row="1" Grid.Column="1" Margin="0,10,0,0">
-                                    <TextBlock Text="OUT" Opacity="0.75" Margin="2,0,0,2" FontSize="11"/>
-                                    <TextBox Style="{StaticResource TrimInOutBox}"
-                                             Text="{Binding EndMs}"
-                                             HorizontalContentAlignment="Right"/>
-                                </StackPanel>
+                                <TextBox Grid.Row="2" Grid.Column="1" Margin="0,2,0,0"
+                 Style="{StaticResource TrimInOutBox_Label}"
+                 Tag="OUT"
+                 Text="{Binding EndMs, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged, StringFormat={}{0}}"
+                 HorizontalContentAlignment="Right"/>
 
                                 <!-- RIGHT: Reset -->
-                                <Button Grid.Row="2" Grid.Column="1"
-                                        Margin="0,10,0,0"
-                                        Height="26"
-                                        Padding="8,0"
-                                        FontSize="12"
-                                        Content="Reset"
-                                        Style="{StaticResource EchopadTopButtonStyle}"
-                                        Click="ResetTrim_Click"/>
+                                <Button Grid.Row="3" Grid.Column="1"
+                Margin="0,2,0,0"
+                Height="26"
+                Padding="8,0"
+                FontSize="12"
+                Content="Reset"
+                Style="{StaticResource EchopadTopButtonStyle}"
+                Click="ResetTrim_Click"/>
                             </Grid>
-
                         </Grid>
+
                     </Grid>
                 </Border>
 

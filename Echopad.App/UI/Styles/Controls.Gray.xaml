@@ -43,5 +43,88 @@
             </Setter.Value>
         </Setter>
     </Style>
+    <!-- =========================================================
+     TrimInOutBox_Label
+     - IN / OUT label inside TextBox
+     - No debug visuals
+     - Collision-safe key
+   ========================================================= -->
+    <Style x:Key="TrimInOutBox_Label" TargetType="{x:Type TextBox}">
+        <Setter Property="Background" Value="{DynamicResource ControlBgBrush}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource ControlBorderBrush}"/>
+        <Setter Property="Foreground" Value="{DynamicResource TextBrush}"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="Height" Value="26"/>
+        <Setter Property="FontSize" Value="12"/>
+        <Setter Property="Padding" Value="0"/>
+
+        <Setter Property="HorizontalContentAlignment" Value="Right"/>
+        <Setter Property="VerticalContentAlignment" Value="Center"/>
+        <Setter Property="SnapsToDevicePixels" Value="True"/>
+
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="{x:Type TextBox}">
+                    <Border x:Name="Bd"
+                        Background="{TemplateBinding Background}"
+                        BorderBrush="{TemplateBinding BorderBrush}"
+                        BorderThickness="{TemplateBinding BorderThickness}"
+                        CornerRadius="6"
+                        SnapsToDevicePixels="True">
+
+                        <!-- Two-column layout: label gutter + value -->
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="28"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+
+                            <!-- IN / OUT label -->
+                            <TextBlock Grid.Column="0"
+                                   Text="{Binding Tag, RelativeSource={RelativeSource TemplatedParent}}"
+                                   Foreground="{DynamicResource MutedTextBrush}"
+                                   FontSize="10"
+                                   FontWeight="SemiBold"
+                                   Opacity="0.85"
+                                   Margin="8,0,0,0"
+                                   VerticalAlignment="Center"
+                                   HorizontalAlignment="Left"
+                                   IsHitTestVisible="False"/>
+
+                            <!-- Numeric value -->
+                            <ScrollViewer Grid.Column="1"
+                                      x:Name="PART_ContentHost"
+                                      Margin="0,0,8,0"
+                                      VerticalAlignment="Center"/>
+                        </Grid>
+                    </Border>
+
+                    <ControlTemplate.Triggers>
+
+                        <!-- Hover -->
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Bd"
+                                Property="BorderBrush"
+                                Value="{DynamicResource AccentBrush}"/>
+                        </Trigger>
+
+                        <!-- Focus -->
+                        <Trigger Property="IsKeyboardFocusWithin" Value="True">
+                            <Setter TargetName="Bd"
+                                Property="BorderBrush"
+                                Value="{DynamicResource Accent2Brush}"/>
+                        </Trigger>
+
+                        <!-- Disabled -->
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter TargetName="Bd" Property="Opacity" Value="0.55"/>
+                        </Trigger>
+
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
 
 </ResourceDictionary>

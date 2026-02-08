@@ -15,6 +15,10 @@ namespace Echopad.App.Settings
         private readonly PadModel _pad;
         private readonly SettingsService _settings;
         private GlobalSettings _global;
+        // Expose monitor output device for preview playback (Out2)
+        public string? MonitorOutDeviceId => _global.MonitorOutDeviceId;
+
+        public GlobalSettings GlobalSettings => _global;
         private readonly PadSettings _padSettings;
         public int ClipDurationMs => (int)_pad.ClipDuration.TotalMilliseconds;
         public PadSettingsViewModel(PadModel pad, SettingsService settings)
@@ -52,6 +56,8 @@ namespace Echopad.App.Settings
             // Keep this for now because your current XAML still has ComboBoxes.
             // We’ll remove it later when we swap to proper color picker UI.
             BuildPadColorChoices();
+            PreviewPlayButtonText = "Play";
+
         }
 
         // =====================================================
@@ -169,7 +175,7 @@ namespace Echopad.App.Settings
             }
         }
 
-        // READ-ONLY formatted display for UI
+        
         // READ-ONLY formatted display for UI
         public string MidiTriggerDisplay
         {
@@ -381,7 +387,32 @@ namespace Echopad.App.Settings
             ApplyToPadModel();
         }
 
+        // =====================================================
+        // PREVIEW UI
+        // =====================================================
+        private string _previewPlayButtonText = "Play";
+        public string PreviewPlayButtonText
+        {
+            get => _previewPlayButtonText;
+            set
+            {
+                if (_previewPlayButtonText == value) return;
+                _previewPlayButtonText = value;
+                OnPropertyChanged();
+            }
+        }
 
+        private int _previewPlayheadMs;
+        public int PreviewPlayheadMs
+        {
+            get => _previewPlayheadMs;
+            set
+            {
+                if (_previewPlayheadMs == value) return;
+                _previewPlayheadMs = value;
+                OnPropertyChanged();
+            }
+        }
         public void ResetTrim()
         {
             StartMs = 0;
@@ -609,7 +640,11 @@ namespace Echopad.App.Settings
         public event PropertyChangedEventHandler? PropertyChanged;
         private void OnPropertyChanged([CallerMemberName] string? n = null)
             => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(n));
+
+        
+
     }
+
 
     // Small helper class for the current ComboBox based UI.
     // We will delete this when we switch to a proper color picker UI.
