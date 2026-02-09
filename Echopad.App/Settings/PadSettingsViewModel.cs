@@ -317,6 +317,15 @@ namespace Echopad.App.Settings
             {
                 if (_isEchoMode == value) return;
                 _isEchoMode = value;
+
+                // NEW: mutual exclusion (Echo wins)
+                if (_isEchoMode && _isDropFolderMode)
+                {
+                    // turn Drop off if Echo enabled
+                    _isDropFolderMode = false;
+                    OnPropertyChanged(nameof(IsDropFolderMode));
+                }
+
                 OnPropertyChanged();
             }
         }
@@ -329,9 +338,18 @@ namespace Echopad.App.Settings
             {
                 if (_isDropFolderMode == value) return;
                 _isDropFolderMode = value;
+
+                // NEW: mutual exclusion (Drop wins)
+                if (_isDropFolderMode && _isEchoMode)
+                {
+                    _isEchoMode = false;
+                    OnPropertyChanged(nameof(IsEchoMode));
+                }
+
                 OnPropertyChanged();
             }
         }
+
 
         // =====================================================
         // PER-PAD UI COLORS (HEX)  ✅ (Added)

@@ -24,18 +24,27 @@ namespace Echopad.Core.Controllers
 
         // NEW: empty pad pressed -> request “commit last buffer to this pad”
         public event Action<PadModel>? CommitFromBufferRequested;
-
+        // NEW: fired when CTRL-copy pastes a clip to a target (so UI can persist)
+        public event Action<PadModel /*source*/, PadModel /*target*/>? PadCopied;
         // =====================================================
         // MODE FLAGS
         // =====================================================
         public void SetEditMode(bool isEditMode)
         {
             _isEditMode = isEditMode;
+
+            // NEW: leaving edit mode should cancel CTRL-copy mode
+            if (!_isEditMode)
+                ClearCopyState();
         }
 
         public void SetCopyHeld(bool held)
         {
             _copyHeld = held;
+
+            // NEW: Ctrl released = copy mode OFF
+            if (!_copyHeld)
+                ClearCopyState();
         }
 
         // =====================================================
@@ -57,11 +66,18 @@ namespace Echopad.Core.Controllers
             }
 
             // ---------------------------------------------
-            // NEW: EMPTY PAD => COMMIT FROM ROLLING BUFFER
+            // HARD GATE: "Echo recording / commit-from-buffer"
+            // Only allowed if pad is Echo-enabled.
             // ---------------------------------------------
             if (string.IsNullOrWhiteSpace(pad.ClipPath))
             {
-                CommitFromBufferRequested?.Invoke(pad);
+                // OLD (bug): always committed from buffer on empty pad
+                // CommitFromBufferRequested?.Invoke(pad);
+
+                // NEW: empty pad click does NOTHING unless Echo mode is enabled for that pad
+                if (CanStartEchoCommit(pad))
+                    CommitFromBufferRequested?.Invoke(pad);
+
                 return;
             }
 
@@ -135,33 +151,54 @@ namespace Echopad.Core.Controllers
         }
 
         // =====================================================
-        // COPY LOGIC (EDIT MODE)
+        // CTRL-COPY (EDIT MODE) - PERSIST UNTIL CTRL RELEASE
         // =====================================================
         private PadModel? _copySource;
 
-        private void HandleCopy(PadModel target)
+        private void ClearCopyState()
         {
-            // First CTRL+click = mark source (must have a clip)
-            if (_copySource == null)
+            // NEW: clear ALL copy visuals (source + any targets)
+            foreach (var p in _pads)
             {
-                if (string.IsNullOrWhiteSpace(target.ClipPath))
-                    return;
-
-                _copySource = target;
-                target.ClipMod = ClipMod.CopySource;
-                return;
+                if (p.ClipMod == ClipMod.CopySource || p.ClipMod == ClipMod.CopiedTarget)
+                    p.ClipMod = ClipMod.None;
             }
 
-            // Second CTRL+click = paste
-            if (_copySource == target)
+            _copySource = null;
+        }
+
+
+        private void HandleCopy(PadModel clicked)
+        {
+            // 1) If no source: first CTRL+click sets source (must have a clip)
+            if (_copySource == null)
+            {
+                if (string.IsNullOrWhiteSpace(clicked.ClipPath))
+                    return; // no-op: can't copy from empty
+
+                _copySource = clicked;
+                _copySource.ClipMod = ClipMod.CopySource;
+                return; // IMPORTANT: do NOT paste on the first click
+            }
+
+            // 2) If clicking source again: no-op
+            if (ReferenceEquals(_copySource, clicked))
                 return;
 
-            CopyPad(_copySource, target);
+            // 3) Paste to target (repeatable)
+            CopyPad(_copySource, clicked);
 
-            _copySource.ClipMod = ClipMod.None;
-            target.ClipMod = ClipMod.CopiedTarget;
+            // Optional visual marker for target (non-blocking)
+            clicked.ClipMod = ClipMod.CopiedTarget;
+            // NEW: tell UI layer to persist target clip assignment immediately
+            PadCopied?.Invoke(_copySource, clicked);
+            // IMPORTANT CHANGE:
+            // OLD (broken): cleared source after first paste
+            // _copySource.ClipMod = ClipMod.None;
+            // _copySource = null;
 
-            _copySource = null;
+            // NEW: keep source armed until CTRL is released
+            _copySource.ClipMod = ClipMod.CopySource;
         }
 
         private static void CopyPad(PadModel src, PadModel dst)
@@ -172,12 +209,39 @@ namespace Echopad.Core.Controllers
             dst.StartMs = src.StartMs;
             dst.EndMs = src.EndMs;
 
-            dst.InputSource = src.InputSource;
-            dst.PreviewToMonitor = src.PreviewToMonitor;
+            // OLD (not wanted - copies in/out routing too)
+            // dst.InputSource = src.InputSource;
+            // dst.PreviewToMonitor = src.PreviewToMonitor;
 
             dst.State = !string.IsNullOrWhiteSpace(dst.ClipPath)
                 ? PadState.Loaded
                 : PadState.Empty;
+        }
+
+
+        // =====================================================
+        // ECHO COMMIT GATE (NO ACCIDENTAL RECORDS)
+        // =====================================================
+        private static bool CanStartEchoCommit(PadModel pad)
+        {
+            // GlobalEchoModeEnabled doesn't exist yet in your codebase.
+            // So the "hard gate" we CAN enforce today is:
+            // - pad must be Echo-enabled
+            // - pad must NOT be Drop-enabled (mutual exclusion rule)
+            // - pad must not be busy
+            if (!pad.IsEchoMode)
+                return false;
+
+            if (pad.IsDropFolderMode)
+                return false;
+
+            if (pad.IsBusy || pad.State == PadState.Playing)
+                return false;
+
+            // OPTIONAL SAFETY: if you later allow overwrite gestures,
+            // this gate can be expanded.
+            // Also: empty pad already implied by caller
+            return true;
         }
 
         // =====================================================

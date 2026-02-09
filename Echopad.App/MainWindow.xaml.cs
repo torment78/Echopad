@@ -139,6 +139,8 @@ namespace Echopad.App
             };
 
             _controller = new PadActionController(vm.Pads);
+            // NEW: persist CTRL-copy results immediately so hydration won't wipe them
+            _controller.PadCopied += Controller_PadCopied;
 
             _controller.PlayRequested += async pad =>
             {
@@ -326,7 +328,35 @@ namespace Echopad.App
             PreviewKeyDown += MainWindow_PreviewKeyDown;
             PreviewKeyUp += MainWindow_PreviewKeyUp;
         }
+        // NEW: Persist copied clip assignment right when CTRL-paste happens
+        private void Controller_PadCopied(PadModel src, PadModel dst)
+        {
+            try
+            {
+                var gs = _settingsService.Load();
+                var ps = gs.GetOrCreatePad(dst.Index);
 
+                // Save ONLY what we want copied: file + trim
+                ps.ClipPath = dst.ClipPath;
+                ps.StartMs = dst.StartMs;
+                ps.EndMs = dst.EndMs;
+
+                // DO NOT copy modes or bindings
+                // ps.IsEchoMode / ps.IsDropFolderMode untouched
+                // ps.PadHotkey / ps.MidiTriggerDisplay untouched
+                // etc.
+
+                _settingsService.Save(gs);
+                GlobalSettings = gs;
+
+                // Optional: refresh LED immediately for target
+                UpdatePadLedForCurrentState(dst);
+            }
+            catch
+            {
+                // Optional later: toast/log
+            }
+        }
         private void Vm_PropertyChanged(object? sender, PropertyChangedEventArgs e)
         {
             if (e.PropertyName != nameof(MainViewModel.IsEditMode))
@@ -883,6 +913,16 @@ namespace Echopad.App
                 pad.IsDropFolderMode = ps.IsDropFolderMode;
                 pad.IsEchoMode = ps.IsEchoMode;
 
+                // NEW: Mutual exclusion on hydration (prefer Drop for safety)
+                // If an old settings file has both enabled, force Echo OFF.
+                if (pad.IsDropFolderMode && pad.IsEchoMode)
+                {
+                    pad.IsEchoMode = false;
+
+                    // Keep persisted settings sane too (self-heal)
+                    ps.IsEchoMode = false;
+                }
+
                 if (!string.IsNullOrWhiteSpace(pad.ClipPath) && File.Exists(pad.ClipPath))
                 {
                     pad.ClipDuration = SafeReadDuration(pad.ClipPath);
@@ -903,12 +943,12 @@ namespace Echopad.App
 
                     // NEW: if EchoMode is on and no clip, show Armed
                     pad.State = pad.IsEchoMode ? PadState.Armed : PadState.Empty;
-
                 }
 
                 pad.PlayheadMs = pad.StartMs;
             }
         }
+
 
         // =====================================================
         // DROP FOLDER DEFAULT
