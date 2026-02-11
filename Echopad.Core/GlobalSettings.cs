@@ -20,7 +20,7 @@ namespace Echopad.Core
         // =========================================================
         public InputEndpointSettings Input1 { get; set; } = new();
         public InputEndpointSettings Input2 { get; set; } = new();
-
+        public ProfileSwitchSettings ProfileSwitch { get; set; } = new();
         public OutputEndpointSettings Out1 { get; set; } = new(); // replaces MainOut concept
         public OutputEndpointSettings Out2 { get; set; } = new(); // replaces MonitorOut concept
 
@@ -127,6 +127,10 @@ namespace Echopad.Core
 
             if (Out2.Mode != AudioEndpointMode.Local && Out2.Mode != AudioEndpointMode.Vban)
                 Out2.Mode = AudioEndpointMode.Local;
+
+            if (ProfileSwitch == null) ProfileSwitch = new ProfileSwitchSettings();
+            ProfileSwitch.EnsureSlots();
+
         }
     }
 }

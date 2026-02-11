@@ -9,9 +9,9 @@
         Background="{DynamicResource AppBackgroundBrush}"
         Foreground="{DynamicResource PrimaryTextBrush}"
         Title="MainWindow" Width="700"
-        Height="745"
+        Height="755"
         MinWidth="700"
-        MinHeight="745"
+        MinHeight="750"
         Focusable="True"
         PreviewKeyDown="MainWindow_PreviewKeyDown"
         PreviewKeyUp="MainWindow_PreviewKeyUp"
@@ -166,10 +166,103 @@
                 <ColumnDefinition Width="Auto"/>
             </Grid.ColumnDefinitions>
 
-            <Button x:Name="BtnSettings"
-                    Style="{StaticResource EchopadTopButtonStyle}"
-                    Content="Settings"
-                    Click="BtnSettings_Click"/>
+            <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                <Button x:Name="BtnSettings"
+            Style="{StaticResource EchopadTopButtonStyle}"
+            Content="Settings"
+            Click="BtnSettings_Click"/>
+
+                <!-- NEW: Profile squircle -->
+                <Button x:Name="BtnProfileSquircle"
+            Width="46"
+            Height="46"
+            Margin="10,0,0,0"
+            Focusable="False"
+            ToolTip="Ctrl + Left: Next profile&#x0A;Ctrl + Right: Profile manager"
+            PreviewMouseLeftButtonDown="BtnProfileSquircle_PreviewMouseLeftButtonDown"
+            PreviewMouseRightButtonDown="BtnProfileSquircle_PreviewMouseRightButtonDown">
+                    <Button.Template>
+                        <ControlTemplate TargetType="{x:Type Button}">
+                            <Grid Width="{TemplateBinding Width}"
+          Height="{TemplateBinding Height}">
+
+                                <!-- Red outer squircle (stroke + glow) -->
+                                <Path x:Name="OuterSquircle"
+              Stretch="Fill"
+              Stroke="#FF2A2A"
+              StrokeThickness="5"
+              Fill="#160606"
+              Data="M 23,2
+                    C 35,2 44,6 44,23
+                    C 44,40 35,44 23,44
+                    C 11,44 2,40 2,23
+                    C 2,6 11,2 23,2 Z">
+                                    <Path.Effect>
+                                        <DropShadowEffect BlurRadius="32"
+                                  ShadowDepth="0"
+                                  Opacity="0.90"
+                                  Color="#FF2A2A"/>
+                                    </Path.Effect>
+                                </Path>
+
+                                <!-- Inner squircle face (slightly inset) -->
+                                <Path x:Name="InnerSquircle"
+              Stretch="Fill"
+              Margin="4"
+              Stroke="#FF2A2A"
+              StrokeThickness="1"
+              Fill="#120505"
+              Opacity="0.98"
+              Data="M 23,2
+                    C 35,2 44,6 44,23
+                    C 44,40 35,44 23,44
+                    C 11,44 2,40 2,23
+                    C 2,6 11,2 23,2 Z"/>
+
+                                <!-- Yellow number with glow -->
+                                <TextBlock Text="{Binding ActiveProfileDisplay,
+                  RelativeSource={RelativeSource AncestorType={x:Type Window}}}"
+           FontSize="18"
+           FontWeight="ExtraBold"
+           Foreground="#FFE06A"
+           HorizontalAlignment="Center"
+           VerticalAlignment="Center">
+                                    <TextBlock.Effect>
+                                        <DropShadowEffect BlurRadius="18"
+                          ShadowDepth="0"
+                          Opacity="0.95"
+                          Color="#FFE06A"/>
+                                    </TextBlock.Effect>
+                                </TextBlock>
+
+                            </Grid>
+
+                            <ControlTemplate.Triggers>
+                                <!-- Hover punch -->
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="OuterSquircle" Property="Opacity" Value="1"/>
+                                    <Setter TargetName="InnerSquircle" Property="Opacity" Value="1"/>
+                                </Trigger>
+
+                                <!-- Pressed squish -->
+                                <Trigger Property="IsPressed" Value="True">
+                                    <Setter Property="RenderTransform">
+                                        <Setter.Value>
+                                            <ScaleTransform ScaleX="0.96" ScaleY="0.96"/>
+                                        </Setter.Value>
+                                    </Setter>
+                                    <Setter Property="RenderTransformOrigin" Value="0.5,0.5"/>
+                                </Trigger>
+
+                                <Trigger Property="IsEnabled" Value="False">
+                                    <Setter TargetName="OuterSquircle" Property="Opacity" Value="0.35"/>
+                                    <Setter TargetName="InnerSquircle" Property="Opacity" Value="0.25"/>
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Button.Template>
+                </Button>
+            </StackPanel>
 
             <TextBlock Grid.Column="1"
                        Text="Echopad(Vban  Edition)"

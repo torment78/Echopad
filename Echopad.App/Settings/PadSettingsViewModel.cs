@@ -53,8 +53,7 @@ namespace Echopad.App.Settings
                 Clamp();
             }
 
-            // Keep this for now because your current XAML still has ComboBoxes.
-            // We’ll remove it later when we swap to proper color picker UI.
+            
             BuildPadColorChoices();
             PreviewPlayButtonText = "Play";
 
@@ -91,6 +90,7 @@ namespace Echopad.App.Settings
         // TRIM (ABSOLUTE MS)
         // =====================================================
         private int _startMs;
+        private int _endMs;
         public int StartMs
         {
             get => _startMs;
@@ -103,7 +103,6 @@ namespace Echopad.App.Settings
             }
         }
 
-        private int _endMs;
         public int EndMs
         {
             get => _endMs;
@@ -115,6 +114,8 @@ namespace Echopad.App.Settings
                 OnPropertyChanged();
             }
         }
+
+
 
         public int TrimStepMs { get; set; } = 10;
 
@@ -474,6 +475,11 @@ namespace Echopad.App.Settings
             ps.MidiLedRunningValue = MidiLedRunningValue;
             ps.MidiLedClearEnabled = MidiLedClearEnabled;
             ps.MidiLedClearValue = MidiLedClearValue;
+            // NEW: persist raw overrides too (if you want them saved)
+            ps.MidiLedActiveRaw = _padSettings.MidiLedActiveRaw;
+            ps.MidiLedRunningRaw = _padSettings.MidiLedRunningRaw;
+            ps.MidiLedClearRaw = _padSettings.MidiLedClearRaw;
+            // ps.MidiLedArmedRaw = _padSettings.MidiLedArmedRaw; // when you implement armed entry
 
             ps.IsEchoMode = IsEchoMode;
             ps.IsDropFolderMode = IsDropFolderMode;
@@ -532,16 +538,39 @@ namespace Echopad.App.Settings
                 _pad.State = PadState.Loaded;
         }
 
+        // NEW
+        private bool _isClamping;
+
         private void Clamp()
         {
-            var total = (int)_pad.ClipDuration.TotalMilliseconds;
-            if (total <= 0) return;
+            if (_isClamping) return;
+            _isClamping = true;
+            try
+            {
+                var total = (int)_pad.ClipDuration.TotalMilliseconds;
+                if (total <= 0) return;
 
-            StartMs = Math.Clamp(StartMs, 0, total);
-            EndMs = Math.Clamp(EndMs <= 0 ? total : EndMs, 0, total);
+                // clamp using fields (NOT properties)
+                var newStart = Math.Clamp(_startMs, 0, total);
+                var newEnd = Math.Clamp(_endMs <= 0 ? total : _endMs, 0, total);
 
-            if (StartMs > EndMs)
-                StartMs = EndMs;
+                if (newStart > newEnd)
+                    newStart = newEnd;
+
+                bool startChanged = newStart != _startMs;
+                bool endChanged = newEnd != _endMs;
+
+                _startMs = newStart;
+                _endMs = newEnd;
+
+                // Raise after fields updated
+                if (startChanged) OnPropertyChanged(nameof(StartMs));
+                if (endChanged) OnPropertyChanged(nameof(EndMs));
+            }
+            finally
+            {
+                _isClamping = false;
+            }
         }
 
         private static int Clamp7(int v) => Math.Clamp(v, 0, 127);
@@ -566,25 +595,22 @@ namespace Echopad.App.Settings
                 switch (kind)
                 {
                     case "Active":
-                        MidiLedActiveValue = n;         // uses Clamp7 internally
+                        MidiLedActiveValue = n;
                         _padSettings.MidiLedActiveRaw = null;
-                        break;
                         OnPropertyChanged(nameof(MidiLedActiveValue));
-
+                        break;
 
                     case "Running":
                         MidiLedRunningValue = n;
                         _padSettings.MidiLedRunningRaw = null;
+                        OnPropertyChanged(nameof(MidiLedRunningValue));
                         break;
-                        OnPropertyChanged(nameof(MidiLedActiveValue));
-
 
                     case "Clear":
                         MidiLedClearValue = n;
                         _padSettings.MidiLedClearRaw = null;
+                        OnPropertyChanged(nameof(MidiLedClearValue));
                         break;
-                        OnPropertyChanged(nameof(MidiLedActiveValue));
-
                 }
 
                 OnPropertyChanged(GetEntryName(kind));

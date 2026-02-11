@@ -12,7 +12,7 @@ namespace Echopad.Core
         public int EndMs { get; set; }
 
         public int InputSource { get; set; } = 1;
-        public bool PreviewToMonitor { get; set; } = true;
+        public bool PreviewToMonitor { get; set; } = false;
 
         public bool IsEchoMode { get; set; }
         public bool IsDropFolderMode { get; set; }
@@ -33,22 +33,7 @@ namespace Echopad.Core
         public bool MidiLedClearEnabled { get; set; } = true;
         public int MidiLedClearValue { get; set; } = 0;
 
-        // ============================================================
-        // NEW: MIDI LED RAW OVERRIDES (HEX BYTES)
-        //
-        // If set (non-empty), these override the value-only send.
-        // Format examples:
-        //   "90 30 7F"
-        //   "{STATUS} {DATA1} {VAL}"
-        //   "B0 10 {VAL}"
-        //
-        // Tokens supported by our sender:
-        //   {STATUS}  -> computed from bind kind + channel (e.g. 90 / B0 etc)
-        //   {DATA1}   -> bind.Number (note or cc number)
-        //   {VAL}     -> computed LED value 00..7F
-        //
-        // Leave null/empty to keep old velocity-only behavior.
-        // ============================================================
+        
 
         public string? MidiLedActiveRaw { get; set; }   // Loaded / Active
         public string? MidiLedRunningRaw { get; set; }  // Playing / Running
@@ -68,16 +53,20 @@ namespace Echopad.Core
             return new PadSettings
             {
                 Index = index,
-                MidiLedActiveValue = 25,
-                MidiLedRunningValue = 127,
-                MidiLedClearValue = 0
 
-                // NEW (optional): leave null so old behavior stays the default
-                // MidiLedActiveRaw = null,
-                // MidiLedRunningRaw = null,
-                // MidiLedArmedRaw = null,
-                // MidiLedClearRaw = null,
+                // sensible defaults
+                InputSource = 1,
+                PreviewToMonitor = false,
+
+                MidiLedActiveEnabled = true,
+                MidiLedRunningEnabled = true,
+                MidiLedClearEnabled = true,
+
+                MidiLedActiveValue = 28,
+                MidiLedRunningValue = 5,
+                MidiLedClearValue = 0
             };
         }
+
     }
 }

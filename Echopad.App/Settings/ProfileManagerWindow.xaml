@@ -1,0 +1,289 @@
+<Window x:Class="Echopad.App.Settings.ProfileManagerWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d"
+        Title="Profiles"
+        MinWidth="860"
+        MaxWidth="860"
+        Height="720"
+        MaxHeight="940"
+        WindowStartupLocation="CenterOwner"
+        ResizeMode="CanResize"
+        Background="{DynamicResource BgBrush}"
+        Foreground="{DynamicResource TextBrush}">
+
+    <Grid Margin="16">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <!-- Header -->
+            <RowDefinition Height="Auto"/>
+            <!-- Global Profile Switching -->
+            <RowDefinition Height="Auto"/>
+            <!-- NEW: Pad MIDI Linking -->
+            <RowDefinition Height="*"/>
+            <!-- Slots -->
+            <RowDefinition Height="Auto"/>
+            <!-- Footer -->
+        </Grid.RowDefinitions>
+
+
+        <!-- HEADER -->
+        <Border Grid.Row="0"
+                Background="{DynamicResource PanelBrush}"
+                BorderBrush="{DynamicResource ControlBorderBrush}"
+                BorderThickness="1"
+                CornerRadius="12"
+                Padding="14">
+            <DockPanel LastChildFill="True">
+                <StackPanel DockPanel.Dock="Left">
+                    <TextBlock Text="Profiles"
+                               FontSize="20"
+                               FontWeight="Bold"
+                               Foreground="{DynamicResource TextBrush}"/>
+                    <TextBlock Text="Configure profile switching binds (MIDI + Hotkeys) and slot names."
+                               Margin="0,2,0,0"
+                               Foreground="{DynamicResource MutedTextBrush}"/>
+                </StackPanel>
+
+                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" HorizontalAlignment="Right">
+                    <Button Style="{StaticResource EchopadTopButtonStyle}"
+                            Content="Close"
+                            MinWidth="110"
+                            Margin="8,0,0,0"
+                            Click="BtnClose_Click"/>
+                </StackPanel>
+            </DockPanel>
+        </Border>
+
+        <!-- GLOBAL SWITCH SETTINGS -->
+        <GroupBox Grid.Row="1" Header="Global Profile Switching" Margin="0,12,0,0">
+
+            <Grid Margin="6">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+
+                <!-- Active -->
+                <StackPanel Grid.Column="0" Margin="0,0,10,0">
+                    <TextBlock Text="Active Profile (1..16)" Foreground="{DynamicResource MutedTextBrush}" Margin="0,0,0,6"/>
+                    <TextBox Background="{DynamicResource ControlBgBrush}"
+                             BorderBrush="{DynamicResource ControlBorderBrush}"
+                             Foreground="{DynamicResource TextBrush}"
+                             Height="28"
+                             Padding="10,0"
+                             Text="{Binding ActiveProfileIndex, UpdateSourceTrigger=PropertyChanged}" Width="247"/>
+                </StackPanel>
+
+                <!-- MIDI Modifier -->
+                <StackPanel Grid.Column="1" Margin="0,0,10,0">
+                    <TextBlock Text="MIDI Modifier (hold)" Foreground="{DynamicResource MutedTextBrush}" Margin="0,0,0,6"/>
+                    <DockPanel>
+                        <TextBox DockPanel.Dock="Left"
+                                 Background="{DynamicResource ControlBgBrush}"
+                                 BorderBrush="{DynamicResource ControlBorderBrush}"
+                                 Foreground="{DynamicResource TextBrush}"
+                                 Height="28"
+                                 Padding="10,0"
+                                 Text="{Binding MidiModifierBind, UpdateSourceTrigger=PropertyChanged}"
+                                 VerticalContentAlignment="Center"
+                                 Margin="0,0,8,0" Width="139"/>
+                        <Button Style="{StaticResource EchopadTopButtonStyle}"
+                                Content="Learn"
+                                MinWidth="30"
+                                Height="28"
+                                Padding="10,0"
+                                Command="{Binding LearnMidiModifierCommand}"/>
+                    </DockPanel>
+                </StackPanel>
+
+                <!-- HOTKEY Modifier -->
+                <StackPanel Grid.Column="2">
+                    <TextBlock Text="Hotkey Modifier (unlock slots)" Foreground="{DynamicResource MutedTextBrush}" Margin="0,0,0,6"/>
+                    <DockPanel>
+                        <TextBox DockPanel.Dock="Left"
+                                 Background="{DynamicResource ControlBgBrush}"
+                                 BorderBrush="{DynamicResource ControlBorderBrush}"
+                                 Foreground="{DynamicResource TextBrush}"
+                                 Height="28"
+                                 Padding="10,0"
+                                 Text="{Binding HotkeyModifier, UpdateSourceTrigger=PropertyChanged}"
+                                 VerticalContentAlignment="Center"
+                                 Margin="0,0,8,0" Width="151"/>
+                        <Button Style="{StaticResource EchopadTopButtonStyle}"
+                                Content="Learn"
+                                MinWidth="30"
+                                Height="28"
+                                Padding="10,0"
+                                Click="BtnLearnHotkeyModifier_Click" Width="78"/>
+                    </DockPanel>
+                </StackPanel>
+            </Grid>
+        </GroupBox>
+        <!-- NEW: PAD MIDI LINK MODE -->
+        <GroupBox Grid.Row="2" Header="Pad MIDI Linking" Margin="0,12,0,0">
+            <Grid Margin="6">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+
+                <RadioButton Grid.Row="0"
+                     Content="All profiles use the SAME PAD MIDI as Profile 1"
+                     IsChecked="{Binding PadsMidiSameAsProfile1, Mode=TwoWay}"/>
+
+                <RadioButton Grid.Row="1"
+                     Margin="0,8,0,0"
+                     Content="All profiles + pad hotkeys use the SAME mapping as Profile 1"
+                     IsChecked="{Binding PadsMidiAndHotkeysSameAsProfile1, Mode=TwoWay}"/>
+            </Grid>
+        </GroupBox>
+
+
+        <!-- SLOTS -->
+        <GroupBox Grid.Row="3" Header="Profile Slots (1..16)" Margin="0,12,0,0">
+
+            <ScrollViewer VerticalScrollBarVisibility="Auto">
+                <ItemsControl ItemsSource="{Binding Slots}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Border Background="{DynamicResource PanelBrush}"
+                                    BorderBrush="{DynamicResource ControlBorderBrush}"
+                                    BorderThickness="1"
+                                    CornerRadius="12"
+                                    Padding="12"
+                                    Margin="0,0,0,10">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="74"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="*"/>
+                                        
+                                    </Grid.ColumnDefinitions>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                    </Grid.RowDefinitions>
+
+                                    <!-- Slot label -->
+                                    <StackPanel Grid.RowSpan="2" Grid.Column="0" VerticalAlignment="Top">
+                                        <TextBlock Text="{Binding IndexText}"
+                                                   FontSize="16"
+                                                   FontWeight="Bold"
+                                                   Foreground="{DynamicResource TextBrush}"/>
+                                        <TextBlock Text="Slot"
+                                                   Foreground="{DynamicResource MutedTextBrush}"/>
+                                    </StackPanel>
+
+                                    <!-- Name -->
+                                    <StackPanel Grid.Column="1" Grid.Row="0" Margin="0,0,10,0">
+                                        <TextBlock Text="Name" Foreground="{DynamicResource MutedTextBrush}" Margin="0,0,0,6"/>
+                                        <TextBox Background="{DynamicResource ControlBgBrush}"
+                                                 BorderBrush="{DynamicResource ControlBorderBrush}"
+                                                 Foreground="{DynamicResource TextBrush}"
+                                                 Height="28"
+                                                 Padding="10,0"
+                                                 Text="{Binding Name, UpdateSourceTrigger=PropertyChanged}"/>
+                                    </StackPanel>
+
+                                    <!-- MIDI bind -->
+                                    <StackPanel Grid.Column="2" Grid.Row="0" Margin="0,0,10,0">
+                                        <TextBlock Text="MIDI Bind" Foreground="{DynamicResource MutedTextBrush}" Margin="0,0,0,6"/>
+                                        <DockPanel>
+                                            <TextBox DockPanel.Dock="Left"
+                                                     Background="{DynamicResource ControlBgBrush}"
+                                                     BorderBrush="{DynamicResource ControlBorderBrush}"
+                                                     Foreground="{DynamicResource TextBrush}"
+                                                     Height="28"
+                                                     Padding="10,0"
+                                                     VerticalContentAlignment="Center"
+                                                     Text="{Binding MidiBind, UpdateSourceTrigger=PropertyChanged}"
+                                                     Margin="0,0,8,0"/>
+                                            <Button Style="{StaticResource EchopadTopButtonStyle}"
+                                                    Content="Learn"
+                                                    MaxWidth="30"
+                                                    Height="28"
+                                                    Padding="10,0"
+                                                    Command="{Binding LearnMidiCommand}"/>
+                                        </DockPanel>
+                                    </StackPanel>
+
+                                    <!-- REMOVED: Activate (not needed) -->
+                                    <!--
+<Button Grid.Column="3" Grid.Row="0"
+        Style="{StaticResource EchopadTopButtonStyle}"
+        Content="Activate"
+        MaxWidth="30"
+        Height="28"
+        Padding="5,0"
+        Command="{Binding ActivateCommand}"/>
+-->
+
+                                    <!-- Hotkey bind -->
+                                    <StackPanel Grid.Column="1" Grid.Row="1" Grid.ColumnSpan="2" Margin="0,10,10,0">
+                                        <TextBlock Text="Hotkey Bind" Foreground="{DynamicResource MutedTextBrush}" Margin="0,0,0,6"/>
+                                        <DockPanel>
+                                            <TextBox x:Name="HotkeyBox"
+                                                     DockPanel.Dock="Left"
+                                                     Background="{DynamicResource ControlBgBrush}"
+                                                     BorderBrush="{DynamicResource ControlBorderBrush}"
+                                                     Foreground="{DynamicResource TextBrush}"
+                                                     Height="28"
+                                                     Padding="10,0"
+                                                     VerticalContentAlignment="Center"
+                                                     Text="{Binding HotkeyBind, UpdateSourceTrigger=PropertyChanged}"
+                                                     Margin="0,0,8,0"/>
+                                            <Button Style="{StaticResource EchopadTopButtonStyle}"
+                                                    Content="Learn"
+                                                    MaxWidth="30"
+                                                    Height="28"
+                                                    Padding="10,0"
+                                                    Click="BtnLearnHotkey_Click"
+                                                    Tag="{Binding}"/>
+                                        </DockPanel>
+
+                                        <TextBlock Margin="0,6,0,0"
+                                                   Foreground="{DynamicResource MutedTextBrush}"
+                                                   Text="Tip: Click Learn, then press a key combo (e.g. Ctrl+Shift+F1)."/>
+                                    </StackPanel>
+
+                                </Grid>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </ScrollViewer>
+        </GroupBox>
+
+        <!-- FOOTER -->
+        <Border Grid.Row="4"
+                Background="{DynamicResource PanelBrush}"
+                BorderBrush="{DynamicResource ControlBorderBrush}"
+                BorderThickness="1"
+                CornerRadius="12"
+                Padding="12"
+                Margin="0,12,0,0">
+            <DockPanel LastChildFill="False">
+                <TextBlock DockPanel.Dock="Left"
+                           VerticalAlignment="Center"
+                           Foreground="{DynamicResource MutedTextBrush}"
+                           Text="{Binding StatusText}"/>
+                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" HorizontalAlignment="Right">
+                    <Button Style="{StaticResource EchopadTopButtonStyle}"
+                            Content="Save"
+                            MinWidth="110"
+                            Margin="0,0,8,0"
+                            Command="{Binding SaveCommand}"/>
+                    <Button Style="{StaticResource EchopadTopButtonStyle}"
+                            Content="Close"
+                            MinWidth="110"
+                            Click="BtnClose_Click"/>
+                </StackPanel>
+            </DockPanel>
+        </Border>
+
+    </Grid>
+</Window>

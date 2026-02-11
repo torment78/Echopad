@@ -38,6 +38,31 @@ namespace Echopad.App
         // =====================================================
         private InputTapEngine? _tapA;
         private InputTapEngine? _tapB;
+        // =====================================================
+        // FORCE PREVIEW ROUTING (monitor lane)
+        // =====================================================
+        private bool _padSettingsDialogOpen;   // any pad editor open
+        private bool _forcePreviewInEditMode = true; // if you want edit mode ALWAYS preview
+        // =====================================================
+        // PROFILES (NEW)
+        // =====================================================
+        private readonly ProfileService _profiles;
+
+        private int _activeProfileIndex = 1;
+        public int ActiveProfileIndex
+        {
+            get => _activeProfileIndex;
+            private set
+            {
+                if (_activeProfileIndex == value) return;
+                _activeProfileIndex = value;
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(ActiveProfileDisplay)); // NEW: keep squircle text live
+            }
+        }
+
+        // XAML uses this (01..16)
+        public string ActiveProfileDisplay => ActiveProfileIndex.ToString("00");
 
         // keep last N seconds in RAM (rolling buffer)
         private const int RollingBufferSeconds = 15;
@@ -55,7 +80,11 @@ namespace Echopad.App
         // =====================================================
         private MidiIn? _midiIn;
         private MidiOut? _midiOut;
-
+        // =====================================================
+        // PROFILES: runtime modifier-hold state (MIDI)
+        // =====================================================
+        private bool _profileMidiModifierHeld;
+        private DateTime _profileMidiModifierHeldUntilUtc = DateTime.MinValue;
         // one-shot MIDI learn callback (used by Settings windows)
         private Action<string>? _pendingMidiLearn;
         private DateTime _lastLearnUtc = DateTime.MinValue;
@@ -128,6 +157,21 @@ namespace Echopad.App
 
             GlobalSettings = _settingsService.Load();
 
+            // NEW: profile service (single profiles.json)
+            _profiles = new ProfileService(_settingsService);
+
+            // NEW: seed profile 1 from whatever pads exist in settings.json (first-run safety)
+            _profiles.EnsureSeedFromCurrentSettings(GlobalSettings);
+
+            // NEW: read active profile index
+            ActiveProfileIndex = _profiles.GetActiveProfileIndex();
+
+            // NEW: apply that profile into settings.json + memory (so the rest of your app keeps working)
+            _profiles.ApplyProfileToSettings(GlobalSettings, ActiveProfileIndex);
+
+            // Reload global settings after apply (ensures we have what got persisted)
+            GlobalSettings = _settingsService.Load();
+
             // hydrate runtime pad models from persisted settings at startup
             HydratePadsFromSettings(vm);
 
@@ -157,18 +201,17 @@ namespace Echopad.App
                 StartPlayhead(pad);
 
                 bool isEdit = (DataContext as MainViewModel)?.IsEditMode == true;
-                bool preview = isEdit && pad.PreviewToMonitor;
 
-                // =========================================================
-                // OLD (kept as fallback)
-                // =========================================================
-                // string? laneOut = _globalSettings.MainOutDeviceId;
-                // await _audio.PlayPadAsync(
-                //     pad,
-                //     mainOutDeviceId: laneOut,
-                //     monitorOutDeviceId: _globalSettings.MonitorOutDeviceId,
-                //     previewToMonitor: preview
-                // );
+                // FORCE rules:
+                // - If a PadSettings window is open -> preview ALWAYS
+                // - If EditMode is on (and you want it forced) -> preview ALWAYS
+                // - Otherwise fallback to per-pad toggle
+                bool preview =
+    _padSettingsDialogOpen ||
+    (_forcePreviewInEditMode && isEdit) ||
+    pad.PreviewToMonitor;
+
+
 
                 // =========================================================
                 // NEW: Use endpoint-based output when AudioEngine supports it
@@ -267,6 +310,7 @@ namespace Echopad.App
 
                     // NOTE: do NOT wipe MIDI/hotkeys
                     _settingsService.Save(gs);
+                    _profiles.SavePadsToProfile(gs, ActiveProfileIndex);
                     GlobalSettings = gs;
 
                     // Update LED to “active/loaded”
@@ -347,6 +391,7 @@ namespace Echopad.App
                 // etc.
 
                 _settingsService.Save(gs);
+                _profiles.SavePadsToProfile(gs, ActiveProfileIndex);
                 GlobalSettings = gs;
 
                 // Optional: refresh LED immediately for target
@@ -696,9 +741,21 @@ namespace Echopad.App
                     return $"NOTE:{noteOn.Channel}:{noteOn.NoteNumber}:1";
 
                 case ControlChangeEvent cc:
-                    // Traktor F1 press is 127, release is 0
-                    if (cc.ControllerValue != 127)
+                    // OLD:
+                    // if (cc.ControllerValue != 127) return null;
+                    // return $"CC:{cc.Channel}:{(int)cc.Controller}:127";
+
+                    // NEW:
+                    // Accept any non-zero CC as "press".
+                    // - If it's 127, keep the old behavior.
+                    // - Otherwise, set MinValue to the received value (so releases at 0 won't trigger).
+                    if (cc.ControllerValue <= 0)
                         return null;
+
+                    int min = cc.ControllerValue;         // learn the actual press value
+                    min = Math.Clamp(min, 1, 127);
+
+                    return $"CC:{cc.Channel}:{(int)cc.Controller}:{min}";
 
                     return $"CC:{cc.Channel}:{(int)cc.Controller}:127";
 
@@ -788,17 +845,118 @@ namespace Echopad.App
                     return false;
             }
         }
+        // =====================================================
+        // PROFILE MIDI: press/release detection helpers
+        // =====================================================
+        private static bool IsSameControl(NAudio.Midi.MidiEvent ev, MidiBind bind)
+        {
+            // Matches the same "control" (channel + note/cc/pc number), ignoring value/velocity.
+            switch (bind.Kind)
+            {
+                case MidiBindKind.Note:
+                    if (ev is NoteEvent ne)
+                        return ne.Channel == bind.Channel && ne.NoteNumber == bind.Number;
+                    return false;
+
+                case MidiBindKind.Cc:
+                    if (ev is ControlChangeEvent cc)
+                        return cc.Channel == bind.Channel && (int)cc.Controller == bind.Number;
+                    return false;
+
+                case MidiBindKind.Pc:
+                    if (ev is PatchChangeEvent pc)
+                        return pc.Channel == bind.Channel && pc.Patch == bind.Number;
+                    return false;
+
+                default:
+                    return false;
+            }
+        }
+        // =====================================================
+        // NEW: Persist current settings.json pad map into active profile
+        // (profiles.json becomes the real source of truth on profile switches)
+        // =====================================================
+        public void PersistPadsToActiveProfile()
+        {
+            try
+            {
+                var gs = _settingsService.Load();
+                _profiles.SavePadsToProfile(gs, ActiveProfileIndex);
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine("[Profile] PersistPadsToActiveProfile failed: " + ex.Message);
+            }
+        }
+
+        private static bool IsPress(NAudio.Midi.MidiEvent ev, MidiBind bind)
+        {
+            // “Press” means value/velocity meets threshold.
+            switch (bind.Kind)
+            {
+                case MidiBindKind.Note:
+                    if (ev is NoteOnEvent onEv)
+                        return onEv.Channel == bind.Channel &&
+                               onEv.NoteNumber == bind.Number &&
+                               onEv.Velocity >= bind.MinValue;
+                    return false;
+
+                case MidiBindKind.Cc:
+                    if (ev is ControlChangeEvent cc)
+                        return cc.Channel == bind.Channel &&
+                               (int)cc.Controller == bind.Number &&
+                               cc.ControllerValue >= bind.MinValue;
+                    return false;
+
+                case MidiBindKind.Pc:
+                    // Program changes are one-shot presses.
+                    if (ev is PatchChangeEvent pc)
+                        return pc.Channel == bind.Channel && pc.Patch == bind.Number;
+                    return false;
+
+                default:
+                    return false;
+            }
+        }
+
+        private static bool IsRelease(NAudio.Midi.MidiEvent ev, MidiBind bind)
+        {
+            // Release is best-effort: NOTE velocity 0, CC value 0.
+            switch (bind.Kind)
+            {
+                case MidiBindKind.Note:
+                    if (ev is NoteOnEvent onEv)
+                        return onEv.Channel == bind.Channel &&
+                               onEv.NoteNumber == bind.Number &&
+                               onEv.Velocity <= 0;
+                    return false;
+
+                case MidiBindKind.Cc:
+                    if (ev is ControlChangeEvent cc)
+                        return cc.Channel == bind.Channel &&
+                               (int)cc.Controller == bind.Number &&
+                               cc.ControllerValue <= 0;
+                    return false;
+
+                default:
+                    return false;
+            }
+        }
 
         // =====================================================
         // MIDI ROUTING
         // =====================================================
         private void HandleMidiEvent(NAudio.Midi.MidiEvent ev)
         {
-            // A) Global actions
+            // NEW: profile switching (modifier + slot)
+            if (TryHandleProfileMidiSwitch(ev))
+                return;
+
+            // Existing global actions
             if (TryHandleGlobalMidiActions(ev))
                 return;
 
-            // B) Per-pad triggers
+            // Existing pad triggers
             if (TryHandlePadMidiTriggers(ev))
                 return;
 
@@ -872,6 +1030,69 @@ namespace Echopad.App
 
             return false;
         }
+        // =====================================================
+        // PROFILES: MIDI switching (modifier-hold + slot MIDI bind)
+        // =====================================================
+        private bool TryHandleProfileMidiSwitch(NAudio.Midi.MidiEvent ev)
+        {
+            var ps = _globalSettings.ProfileSwitch;
+            if (ps == null || ps.Slots == null || ps.Slots.Count == 0)
+                return false;
+
+            // 1) Update modifier held state (press/release)
+            if (!string.IsNullOrWhiteSpace(ps.MidiModifierBind))
+            {
+                var modBind = TryParseMidiBind(ps.MidiModifierBind);
+                if (modBind.HasValue && IsSameControl(ev, modBind.Value))
+                {
+                    if (IsPress(ev, modBind.Value))
+                    {
+                        _profileMidiModifierHeld = true;
+
+                        // Safety timeout (in case we never see a release)
+                        _profileMidiModifierHeldUntilUtc = DateTime.UtcNow.AddSeconds(3);
+                    }
+                    else if (IsRelease(ev, modBind.Value))
+                    {
+                        _profileMidiModifierHeld = false;
+                        _profileMidiModifierHeldUntilUtc = DateTime.MinValue;
+                    }
+
+                    return true; // consume modifier events
+                }
+            }
+
+            // Safety timeout fallback
+            if (_profileMidiModifierHeld && DateTime.UtcNow > _profileMidiModifierHeldUntilUtc)
+                _profileMidiModifierHeld = false;
+
+            if (!_profileMidiModifierHeld)
+                return false;
+
+            // 2) While modifier held, slot MIDI bind press => switch profile
+            for (int i = 0; i < ps.Slots.Count; i++)
+            {
+                var slot = ps.Slots[i];
+                if (slot == null) continue;
+
+                if (string.IsNullOrWhiteSpace(slot.MidiBind))
+                    continue;
+
+                var slotBind = TryParseMidiBind(slot.MidiBind);
+                if (!slotBind.HasValue)
+                    continue;
+
+                if (IsPress(ev, slotBind.Value))
+                {
+                    int targetProfile = i + 1;
+                    SwitchToProfile(targetProfile);
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
 
         private void TriggerPadFromMidi(int padIndex)
         {
@@ -948,6 +1169,146 @@ namespace Echopad.App
                 pad.PlayheadMs = pad.StartMs;
             }
         }
+        private void BtnProfileSquircle_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+        {
+            if (!Keyboard.Modifiers.HasFlag(ModifierKeys.Control))
+                return;
+
+            e.Handled = true;
+
+            int next = ActiveProfileIndex + 1;
+            if (next > 16) next = 1;
+
+            SwitchToProfile(next);
+        }
+        private void SwitchToProfile(int newIndex)
+        {
+            newIndex = Math.Clamp(newIndex, 1, 16);
+
+            try
+            {
+                // 1) Save current pad-set into current profile slot (profiles.json)
+                _profiles.SavePadsToProfile(GlobalSettings, ActiveProfileIndex);
+
+                // 2) Set new active index in profiles.json
+                _profiles.SetActiveProfileIndex(newIndex);
+                ActiveProfileIndex = newIndex;
+
+                // 3) Apply target profile pads into settings.json (so existing code keeps working)
+                var gs = _settingsService.Load();
+                _profiles.ApplyProfileToSettings(gs, ActiveProfileIndex);
+                
+                // =====================================================
+                // NEW (bool flags from ProfileManagerWindow)
+                // =====================================================
+                bool lockMidi = gs.ProfileSwitch?.PadsMidiSameAsProfile1 == true;
+                bool lockMidiAndHotkeys = gs.ProfileSwitch?.PadsMidiAndHotkeysSameAsProfile1 == true;
+
+                // if both true in dirty json, prefer stronger option
+                if (lockMidi && lockMidiAndHotkeys)
+                    lockMidi = false;
+
+                if (lockMidi || lockMidiAndHotkeys)
+                {
+                    _profiles.OverlayPadMapFromProfile1(gs, includeHotkeys: lockMidiAndHotkeys);
+                }
+
+                // Persist the overlay into settings.json so the running app uses it
+                _settingsService.Save(gs);
+
+                // 4) Reload and hydrate UI
+                GlobalSettings = _settingsService.Load();
+
+                if (DataContext is MainViewModel mvm)
+                    HydratePadsFromSettings(mvm);
+
+                // 5) LEDs
+                SyncAllPadLeds();
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine("[Profile] Switch failed: " + ex.Message);
+            }
+        }
+
+        private void ApplyProfile1PadMidiLockIfEnabled(GlobalSettings gs)
+        {
+            var mode = gs.ProfileSwitch?.MidiLinkMode ?? ProfileMidiLinkMode.PerProfile;
+            if (mode == ProfileMidiLinkMode.PerProfile)
+                return;
+
+            // Load Profile 1 pads from profiles.json via ProfileService
+            var profile1Pads = _profiles.GetPadsForProfile(1); // YOU MAY NOT HAVE THIS YET
+            if (profile1Pads == null || profile1Pads.Count == 0)
+                return;
+
+            gs.Pads ??= new Dictionary<int, PadSettings>();
+
+            foreach (var kv in profile1Pads)
+            {
+                int padIndex = kv.Key;
+                var src = kv.Value;
+                if (src == null) continue;
+
+                var dst = gs.GetOrCreatePad(padIndex);
+
+                // Always lock MIDI trigger
+                dst.MidiTriggerDisplay = src.MidiTriggerDisplay;
+
+                // Optionally lock hotkey too
+                if (mode == ProfileMidiLinkMode.PadsMidiAndHotkeysSameAsProfile1)
+                    dst.PadHotkey = src.PadHotkey;
+            }
+        }
+
+        private void OpenProfileManagerWindow()
+        {
+            try
+            {
+                // NEW: create the real VM + Window
+                var vm = new Echopad.App.Settings.ProfileManagerViewModel(this, _settingsService);
+                var win = new Echopad.App.Settings.ProfileManagerWindow(vm)
+                {
+                    Owner = this
+                };
+
+                win.ShowDialog();
+
+                // Optional: after closing, refresh the squircle number + anything else
+                // If your squircle binds to ActiveProfileIndex, this is enough:
+                // OnPropertyChanged(nameof(ActiveProfileIndex));
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(this,
+                    ex.Message,
+                    "Profile manager error",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Error);
+            }
+        }
+
+
+
+
+        private void BtnProfileSquircle_PreviewMouseRightButtonUp(object sender, MouseButtonEventArgs e)
+        {
+            if (!Keyboard.Modifiers.HasFlag(ModifierKeys.Control))
+                return;
+
+            e.Handled = true;
+
+            OpenProfileManagerWindow();
+        }
+        private void BtnProfileSquircle_PreviewMouseRightButtonDown(object sender, MouseButtonEventArgs e)
+        {
+            if (!Keyboard.Modifiers.HasFlag(ModifierKeys.Control))
+                return;
+
+            e.Handled = true;
+
+            OpenProfileManagerWindow();
+        }
 
 
         // =====================================================
@@ -982,6 +1343,7 @@ namespace Echopad.App
                         gs.AudioFolders.Add(def);
 
                     _settingsService.Save(gs);
+                    
                 }
                 catch
                 {
@@ -989,6 +1351,7 @@ namespace Echopad.App
                     gs.DropFolderEnabled = false;
                     gs.DropWatchFolder = null;
                     _settingsService.Save(gs);
+                    
                 }
             }
 
@@ -1059,6 +1422,7 @@ namespace Echopad.App
 
             _settingsService.Save(gs);
             GlobalSettings = gs;
+            _profiles.SavePadsToProfile(gs, ActiveProfileIndex);
 
             // LED -> active (loaded)
             UpdatePadLedForCurrentState(target);
@@ -1125,19 +1489,36 @@ namespace Echopad.App
 
         private void OpenPadSettingsWindow(PadModel pad)
         {
-            var vm = new PadSettingsViewModel(pad, _settingsService);
-            var win = new PadSettingsWindow(vm) { Owner = this };
-            win.ShowDialog();
+            if (_padSettingsDialogOpen)
+                return;
 
-            if (DataContext is MainViewModel mvm)
-                HydratePadsFromSettings(mvm);
+            _padSettingsDialogOpen = true;
 
-            // reload global binds/pad triggers after pad settings change
-            GlobalSettings = _settingsService.Load();
+            try
+            {
+                var vm = new PadSettingsViewModel(pad, _settingsService);
+                var win = new PadSettingsWindow(vm) { Owner = this };
+                win.ShowDialog();
 
-            // refresh LED for this pad
-            UpdatePadLedForCurrentState(pad);
+                _controller.BlockEchoCommit(pad.Index, 650);
+
+                if (DataContext is MainViewModel mvm)
+                    HydratePadsFromSettings(mvm);
+
+                // reload global binds/pad triggers after pad settings change
+                GlobalSettings = _settingsService.Load();
+
+                // refresh LED for this pad
+                UpdatePadLedForCurrentState(pad);
+            }
+            finally
+            {
+                _padSettingsDialogOpen = false;
+            }
         }
+
+
+
 
         private void BtnSettings_Click(object sender, RoutedEventArgs e)
         {
@@ -1165,12 +1546,31 @@ namespace Echopad.App
             sb.Append(key.ToString());
             return sb.ToString();
         }
+        // NEW: returns only the key name (no modifiers) for profile-slot style binds like "F1"
+        private static string? BuildKeyOnlyText(KeyEventArgs e)
+        {
+            if (e.Key is Key.LeftCtrl or Key.RightCtrl or Key.LeftAlt or Key.RightAlt
+                or Key.LeftShift or Key.RightShift or Key.LWin or Key.RWin)
+                return null;
+
+            var key = (e.Key == Key.System) ? e.SystemKey : e.Key;
+            return key.ToString();
+        }
+
+        private static string NormalizeHot(string? s)
+        {
+            if (string.IsNullOrWhiteSpace(s)) return "";
+            return s.Replace(" ", "").Trim().ToUpperInvariant();
+        }
 
         private bool TryHandleHotkeys(KeyEventArgs e)
         {
             var hot = BuildHotkeyText(e);
             if (string.IsNullOrWhiteSpace(hot))
                 return false;
+            // NEW: Profile hotkeys (modifier + slot key OR full bind)
+            if (TryHandleProfileHotkeys(e))
+                return true;
 
             if (!string.IsNullOrWhiteSpace(_globalSettings.HotkeyToggleEdit) &&
                 string.Equals(hot, _globalSettings.HotkeyToggleEdit, StringComparison.OrdinalIgnoreCase))
@@ -1211,6 +1611,72 @@ namespace Echopad.App
 
             return false;
         }
+        // =====================================================
+        // PROFILES: Hotkey switching
+        // - Supports full binds: "Ctrl+Shift+F1"
+        // - Supports key-only binds: "F1" when HotkeyModifier is held (e.g. "Ctrl+Shift")
+        // =====================================================
+        private bool TryHandleProfileHotkeys(KeyEventArgs e)
+        {
+            var ps = _globalSettings.ProfileSwitch;
+            if (ps == null || ps.Slots == null || ps.Slots.Count == 0)
+                return false;
+
+            var full = NormalizeHot(BuildHotkeyText(e));      // e.g. CTRL+SHIFT+F1
+            var keyOnly = NormalizeHot(BuildKeyOnlyText(e));  // e.g. F1
+
+            if (string.IsNullOrWhiteSpace(full) && string.IsNullOrWhiteSpace(keyOnly))
+                return false;
+
+            var modNeed = NormalizeHot(ps.HotkeyModifier); // e.g. CTRL+SHIFT
+            var modsNow = NormalizeHot(Keyboard.Modifiers switch
+            {
+                ModifierKeys.None => "",
+                _ => (Keyboard.Modifiers.HasFlag(ModifierKeys.Control) ? "Ctrl+" : "") +
+                     (Keyboard.Modifiers.HasFlag(ModifierKeys.Shift) ? "Shift+" : "") +
+                     (Keyboard.Modifiers.HasFlag(ModifierKeys.Alt) ? "Alt+" : "") +
+                     (Keyboard.Modifiers.HasFlag(ModifierKeys.Windows) ? "Win+" : "")
+            });
+
+            // remove trailing '+'
+            if (modsNow.EndsWith("+", StringComparison.Ordinal))
+                modsNow = modsNow[..^1];
+
+            bool modifierHeld = !string.IsNullOrWhiteSpace(modNeed) && modsNow == modNeed;
+
+            for (int i = 0; i < ps.Slots.Count; i++)
+            {
+                var slot = ps.Slots[i];
+                if (slot == null) continue;
+
+                var bind = NormalizeHot(slot.HotkeyBind);
+                if (string.IsNullOrWhiteSpace(bind))
+                    continue;
+
+                // If slot bind contains '+' it's a full bind; match full.
+                if (bind.Contains("+"))
+                {
+                    if (bind == full)
+                    {
+                        SwitchToProfile(i + 1);
+                        e.Handled = true;
+                        return true;
+                    }
+                }
+                else
+                {
+                    // key-only bind requires modifierHeld (HotkeyModifier)
+                    if (modifierHeld && bind == keyOnly)
+                    {
+                        SwitchToProfile(i + 1);
+                        e.Handled = true;
+                        return true;
+                    }
+                }
+            }
+
+            return false;
+        }
 
         private void MainWindow_PreviewKeyDown(object sender, KeyEventArgs e)
         {
@@ -1218,6 +1684,9 @@ namespace Echopad.App
                 _controller.SetCopyHeld(true);
 
             if (e.IsRepeat)
+                return;
+
+            if (TryHandleProfileHotkey(e))
                 return;
 
             if (TryHandleHotkeys(e))
@@ -1229,6 +1698,36 @@ namespace Echopad.App
                 _controller.ActivatePad(padNumber);
                 e.Handled = true;
             }
+        }
+        private bool TryHandleProfileHotkey(KeyEventArgs e)
+        {
+            var ps = GlobalSettings.ProfileSwitch;
+            if (ps == null)
+                return false;
+
+            var hot = BuildHotkeyText(e);
+            if (string.IsNullOrWhiteSpace(hot))
+                return false;
+
+            // Modifier must match exactly (Ctrl / Ctrl+Shift / etc.)
+            if (!string.IsNullOrWhiteSpace(ps.HotkeyModifier))
+            {
+                var mods = Keyboard.Modifiers.ToString().Replace(", ", "+");
+                if (!string.Equals(mods, ps.HotkeyModifier, StringComparison.OrdinalIgnoreCase))
+                    return false;
+            }
+
+            for (int i = 0; i < ps.Slots.Count && i < 16; i++)
+            {
+                if (string.Equals(ps.Slots[i].HotkeyBind, hot, StringComparison.OrdinalIgnoreCase))
+                {
+                    SwitchToProfile(i + 1);
+                    e.Handled = true;
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         private void MainWindow_PreviewKeyUp(object sender, KeyEventArgs e)
@@ -1338,6 +1837,7 @@ namespace Echopad.App
                 // ps.IsDropFolderMode
 
                 _settingsService.Save(gs);
+                _profiles.SavePadsToProfile(gs, ActiveProfileIndex);
                 GlobalSettings = gs;
 
                 if (DataContext is MainViewModel mvm)
@@ -1471,6 +1971,7 @@ namespace Echopad.App
 
             _settingsService.Save(gs);
             GlobalSettings = _settingsService.Load();
+            _profiles.SavePadsToProfile(gs, ActiveProfileIndex);
         }
     }
 }

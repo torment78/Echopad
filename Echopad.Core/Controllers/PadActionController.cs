@@ -24,8 +24,36 @@ namespace Echopad.Core.Controllers
 
         // NEW: empty pad pressed -> request “commit last buffer to this pad”
         public event Action<PadModel>? CommitFromBufferRequested;
+
         // NEW: fired when CTRL-copy pastes a clip to a target (so UI can persist)
         public event Action<PadModel /*source*/, PadModel /*target*/>? PadCopied;
+
+        // =====================================================
+        // NEW: short block to prevent immediate Echo re-commit
+        // after delete / after closing settings (click-through / midi repeat)
+        // =====================================================
+        private readonly Dictionary<int, DateTime> _echoCommitBlockedUntilUtc = new();
+
+        /// <summary>
+        /// Temporarily blocks Echo commit on a pad for a short window.
+        /// Call this after ClearPad() or when closing dialogs to prevent click-through re-trigger.
+        /// </summary>
+        public void BlockEchoCommit(int padIndex, int ms = 450)
+        {
+            if (padIndex <= 0) return;
+            _echoCommitBlockedUntilUtc[padIndex] = DateTime.UtcNow.AddMilliseconds(ms);
+        }
+
+        private bool IsEchoCommitBlocked(PadModel pad)
+        {
+            if (pad == null) return true;
+
+            if (_echoCommitBlockedUntilUtc.TryGetValue(pad.Index, out var until))
+                return DateTime.UtcNow < until;
+
+            return false;
+        }
+
         // =====================================================
         // MODE FLAGS
         // =====================================================
@@ -68,11 +96,14 @@ namespace Echopad.Core.Controllers
             // ---------------------------------------------
             // HARD GATE: "Echo recording / commit-from-buffer"
             // Only allowed if pad is Echo-enabled.
+            // PLUS: block window to prevent immediate re-commit
+            // after delete / dialog close / click-through.
             // ---------------------------------------------
             if (string.IsNullOrWhiteSpace(pad.ClipPath))
             {
-                // OLD (bug): always committed from buffer on empty pad
-                // CommitFromBufferRequested?.Invoke(pad);
+                // NEW: prevent instant re-trigger
+                if (IsEchoCommitBlocked(pad))
+                    return;
 
                 // NEW: empty pad click does NOTHING unless Echo mode is enabled for that pad
                 if (CanStartEchoCommit(pad))
@@ -132,6 +163,9 @@ namespace Echopad.Core.Controllers
             if (pad == null)
                 return;
 
+            // NEW: prevent immediate Echo re-commit caused by mouse-up / midi repeat
+            BlockEchoCommit(pad.Index, 650);
+
             StopRequested?.Invoke(pad);
 
             pad.ClipPath = null;
@@ -167,7 +201,6 @@ namespace Echopad.Core.Controllers
             _copySource = null;
         }
 
-
         private void HandleCopy(PadModel clicked)
         {
             // 1) If no source: first CTRL+click sets source (must have a clip)
@@ -190,12 +223,9 @@ namespace Echopad.Core.Controllers
 
             // Optional visual marker for target (non-blocking)
             clicked.ClipMod = ClipMod.CopiedTarget;
+
             // NEW: tell UI layer to persist target clip assignment immediately
             PadCopied?.Invoke(_copySource, clicked);
-            // IMPORTANT CHANGE:
-            // OLD (broken): cleared source after first paste
-            // _copySource.ClipMod = ClipMod.None;
-            // _copySource = null;
 
             // NEW: keep source armed until CTRL is released
             _copySource.ClipMod = ClipMod.CopySource;
@@ -218,14 +248,12 @@ namespace Echopad.Core.Controllers
                 : PadState.Empty;
         }
 
-
         // =====================================================
         // ECHO COMMIT GATE (NO ACCIDENTAL RECORDS)
         // =====================================================
         private static bool CanStartEchoCommit(PadModel pad)
         {
-            // GlobalEchoModeEnabled doesn't exist yet in your codebase.
-            // So the "hard gate" we CAN enforce today is:
+            // Hard gate we can enforce today:
             // - pad must be Echo-enabled
             // - pad must NOT be Drop-enabled (mutual exclusion rule)
             // - pad must not be busy
@@ -238,9 +266,7 @@ namespace Echopad.Core.Controllers
             if (pad.IsBusy || pad.State == PadState.Playing)
                 return false;
 
-            // OPTIONAL SAFETY: if you later allow overwrite gestures,
-            // this gate can be expanded.
-            // Also: empty pad already implied by caller
+            // empty pad already implied by caller
             return true;
         }
 

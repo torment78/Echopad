@@ -99,8 +99,20 @@ namespace Echopad.App.Settings
         private void Ok_Click(object sender, RoutedEventArgs e)
         {
             _vm.Save();
+
+            // NEW: also persist into the active profile slot (profiles.json)
+            if (Owner is MainWindow mw)
+            {
+                try
+                {
+                    mw.PersistPadsToActiveProfile(); // NEW (you add this method in MainWindow)
+                }
+                catch { }
+            }
+
             DialogResult = true;
         }
+
 
         private void Cancel_Click(object sender, RoutedEventArgs e)
         {
