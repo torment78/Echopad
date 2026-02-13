@@ -26,12 +26,17 @@ namespace Echopad.Audio
         private readonly ConcurrentDictionary<int, CancellationTokenSource> _vbanCts = new();
         private readonly ConcurrentDictionary<int, VbanTxEngine> _vbanTx = new();
 
+        // -------------------------------------------------
+        // Helper: is this pad currently playing (engine truth)
+        // -------------------------------------------------
+        public bool IsPadPlaying(int padIndex)
+            => _players.ContainsKey(padIndex) || _vbanCts.ContainsKey(padIndex);
+
         // =========================================================
         // OLD signature (kept) — maps to endpoint model internally
         // =========================================================
         public async Task PlayPadAsync(PadModel pad, string? mainOutDeviceId, string? monitorOutDeviceId, bool previewToMonitor)
         {
-            // Map legacy device ids -> endpoint settings (Local mode)
             var out1 = new OutputEndpointSettings
             {
                 Mode = AudioEndpointMode.Local,
@@ -52,11 +57,12 @@ namespace Echopad.Audio
         // =========================================================
         public async Task PlayPadAsync(PadModel pad, OutputEndpointSettings out1, OutputEndpointSettings out2, bool previewToMonitor)
         {
-            StopPad(pad);
-
             if (pad == null) return;
             if (string.IsNullOrWhiteSpace(pad.ClipPath)) return;
             if (!File.Exists(pad.ClipPath)) return;
+
+            // HARD STOP any existing run for this pad FIRST (safe + non-reentrant)
+            StopPad(pad);
 
             var endpoint = previewToMonitor ? out2 : out1;
 
@@ -82,7 +88,7 @@ namespace Echopad.Audio
                 Take = TimeSpan.FromMilliseconds(playMs)
             };
 
-            // Store reader so StopPad always disposes it
+            // store reader so StopPad disposes it
             _readers[pad.Index] = reader;
 
             if (endpoint.Mode == AudioEndpointMode.Vban)
@@ -91,14 +97,17 @@ namespace Echopad.Audio
                 return;
             }
 
-            // Local: WASAPI playback (existing behavior)
+            // Local: WASAPI playback
             var player = CreateWasapiOutById(endpoint.LocalDeviceId);
 
+            // IMPORTANT:
+            // PlaybackStopped MUST NOT call StopPad(), because StopPad() calls player.Stop()
+            // which can re-enter PlaybackStopped and create “needs many clicks” behavior.
             player.PlaybackStopped += (_, __) =>
             {
                 try
                 {
-                    StopPad(pad);
+                    CleanupLocalOnly(pad.Index);
                     PadPlaybackEnded?.Invoke(pad.Index);
                 }
                 catch { }
@@ -114,27 +123,20 @@ namespace Echopad.Audio
 
         private async Task StartVbanTxPadAsync(PadModel pad, ISampleProvider sampleProvider, OutputEndpointSettings endpoint)
         {
-            // Cancel any existing VBAN run (should already be stopped by StopPad)
+            // Cancel any existing VBAN run (already stopped by StopPad)
             var cts = new CancellationTokenSource();
             _vbanCts[pad.Index] = cts;
 
             // Create TX engine
+            endpoint.Vban ??= new VbanTxSettings();
             var tx = new VbanTxEngine(endpoint.Vban);
             _vbanTx[pad.Index] = tx;
 
             // Pace in real-time based on sample rate
-            int sampleRate = endpoint.Vban.SampleRate;
-            int channels = endpoint.Vban.Channels;
-
-            // NOTE:
-            // AudioFileReader's sampleProvider has its own WaveFormat sample rate.
-            // For v1 we assume you configure VBAN to match the file's sample rate.
-            // If you want forced SR conversion later, we can add resampling.
             var srcFmt = sampleProvider.WaveFormat;
-            sampleRate = srcFmt.SampleRate;
-            channels = srcFmt.Channels;
+            int sampleRate = srcFmt.SampleRate;
+            int channels = srcFmt.Channels;
 
-            // Frame sizing
             int frameSamplesPerChannel = Math.Clamp(endpoint.Vban.FrameSamples, 64, 1024);
             int floatsPerFrame = frameSamplesPerChannel * channels;
 
@@ -142,7 +144,6 @@ namespace Echopad.Audio
 
             Debug.WriteLine($"[AudioEngine] VBAN TX pad={pad.Index} -> {endpoint.Vban.RemoteIp}:{endpoint.Vban.Port} stream='{endpoint.Vban.StreamName}' sr={sampleRate} ch={channels} frame={frameSamplesPerChannel}");
 
-            // Run streaming loop
             _ = Task.Run(async () =>
             {
                 try
@@ -155,8 +156,6 @@ namespace Echopad.Audio
 
                         tx.SendInterleavedFloat32Frame(buffer, read, sampleRate, channels);
 
-                        // Pace to real-time
-                        // durationSeconds = framesPerChannel / sampleRate
                         int samplesPerChannelSent = read / Math.Max(1, channels);
                         double seconds = (double)samplesPerChannelSent / Math.Max(1, sampleRate);
                         int delayMs = (int)Math.Round(seconds * 1000.0);
@@ -174,7 +173,8 @@ namespace Echopad.Audio
                 {
                     try
                     {
-                        StopPad(pad);
+                        CleanupVbanOnly(pad.Index);
+                        CleanupReaderOnly(pad.Index);
                         PadPlaybackEnded?.Invoke(pad.Index);
                     }
                     catch { }
@@ -188,27 +188,53 @@ namespace Echopad.Audio
         {
             if (pad == null) return;
 
-            // Stop local player
-            if (_players.TryRemove(pad.Index, out var player))
+            int idx = pad.Index;
+
+            // Remove first (engine truth changes immediately)
+            if (_players.TryRemove(idx, out var player))
             {
+                try { player.PlaybackStopped -= Player_PlaybackStopped_NoOp; } catch { }
                 try { player.Stop(); } catch { }
                 try { player.Dispose(); } catch { }
             }
 
-            // Stop VBAN streaming
-            if (_vbanCts.TryRemove(pad.Index, out var cts))
+            CleanupVbanOnly(idx);
+            CleanupReaderOnly(idx);
+        }
+
+        // Used only to allow safe “-=” even if we didn’t attach this handler.
+        private void Player_PlaybackStopped_NoOp(object? s, StoppedEventArgs e) { }
+
+        // -------------------------------------------------
+        // Cleanup helpers (NO Stop())
+        // -------------------------------------------------
+        private void CleanupLocalOnly(int padIndex)
+        {
+            if (_players.TryRemove(padIndex, out var player))
+            {
+                try { player.Dispose(); } catch { }
+            }
+
+            CleanupReaderOnly(padIndex);
+        }
+
+        private void CleanupVbanOnly(int padIndex)
+        {
+            if (_vbanCts.TryRemove(padIndex, out var cts))
             {
                 try { cts.Cancel(); } catch { }
                 try { cts.Dispose(); } catch { }
             }
 
-            if (_vbanTx.TryRemove(pad.Index, out var tx))
+            if (_vbanTx.TryRemove(padIndex, out var tx))
             {
                 try { tx.Dispose(); } catch { }
             }
+        }
 
-            // Dispose reader
-            if (_readers.TryRemove(pad.Index, out var reader))
+        private void CleanupReaderOnly(int padIndex)
+        {
+            if (_readers.TryRemove(padIndex, out var reader))
             {
                 try { reader.Dispose(); } catch { }
             }

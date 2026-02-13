@@ -130,14 +130,14 @@
                             <!-- NEW: Background comes from converter (tinted surface) -->
                             <Border.Background>
                                 <MultiBinding Converter="{StaticResource PadVisualBrushConverter}"
-                  ConverterParameter="Background">
+                                              ConverterParameter="Background">
                                     <Binding Path="State"/>
                                     <Binding Path="ClipPath"/>
                                     <Binding Path="IsEchoMode"/>
                                     <Binding Path="InputSource"/>
                                     <Binding Path="Index"/>
                                     <Binding Path="GlobalSettings"
-                 RelativeSource="{RelativeSource AncestorType=Window}"/>
+                                             RelativeSource="{RelativeSource AncestorType=Window}"/>
                                 </MultiBinding>
                             </Border.Background>
 
@@ -156,8 +156,71 @@
                                         BorderBrush="#22000000"
                                         Opacity="0.35"/>
 
+                                <!-- =====================================================
+                                     CENTER CONTENT
+                                     - Shows PadName (wrap up to ~3 lines)
+                                     - If PadName empty/null => shows Index number
+                                   ===================================================== -->
+
+                                <!-- OLD:
                                 <ContentPresenter HorizontalAlignment="Center"
                                                   VerticalAlignment="Center"/>
+                                -->
+
+                                <!-- NEW: Name / Number -->
+                                <Grid HorizontalAlignment="Center"
+                                      VerticalAlignment="Center"
+                                      Margin="12">
+
+                                    <!-- Pad Name -->
+                                    <TextBlock Text="{Binding PadName}"
+                                               TextWrapping="Wrap"
+                                               TextAlignment="Center"
+                                               FontSize="16"
+                                               FontWeight="SemiBold"
+                                               Foreground="{DynamicResource PrimaryTextBrush}"
+                                               LineStackingStrategy="BlockLineHeight"
+                                               LineHeight="18"
+                                               MaxHeight="54"
+                                               TextTrimming="CharacterEllipsis">
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock">
+                                                <Setter Property="Visibility" Value="Visible"/>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding PadName}" Value="{x:Null}">
+                                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                                    </DataTrigger>
+                                                    <DataTrigger Binding="{Binding PadName}" Value="">
+                                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
+
+                                    <!-- Fallback: Pad Number -->
+                                    <TextBlock Text="{Binding Index}"
+                                               FontSize="22"
+                                               FontWeight="Bold"
+                                               HorizontalAlignment="Center"
+                                               VerticalAlignment="Center"
+                                               Foreground="{DynamicResource PrimaryTextBrush}">
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock">
+                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding PadName}" Value="{x:Null}">
+                                                        <Setter Property="Visibility" Value="Visible"/>
+                                                    </DataTrigger>
+                                                    <DataTrigger Binding="{Binding PadName}" Value="">
+                                                        <Setter Property="Visibility" Value="Visible"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
+
+                                </Grid>
 
                                 <!-- EDIT TIME OVERLAY -->
                                 <Grid x:Name="EditTimeOverlay"
@@ -252,14 +315,14 @@
                                 IsHitTestVisible="False">
                             <Border.BorderBrush>
                                 <MultiBinding Converter="{StaticResource PadVisualBrushConverter}"
-                  ConverterParameter="Glow">
+                                              ConverterParameter="Glow">
                                     <Binding Path="State"/>
                                     <Binding Path="ClipPath"/>
                                     <Binding Path="IsEchoMode"/>
                                     <Binding Path="InputSource"/>
                                     <Binding Path="Index"/>
                                     <Binding Path="GlobalSettings"
-                 RelativeSource="{RelativeSource AncestorType=Window}"/>
+                                             RelativeSource="{RelativeSource AncestorType=Window}"/>
                                 </MultiBinding>
                             </Border.BorderBrush>
                         </Border>
@@ -271,14 +334,14 @@
                                 IsHitTestVisible="False">
                             <Border.BorderBrush>
                                 <MultiBinding Converter="{StaticResource PadVisualBrushConverter}"
-                  ConverterParameter="Glow">
+                                              ConverterParameter="Glow">
                                     <Binding Path="State"/>
                                     <Binding Path="ClipPath"/>
                                     <Binding Path="IsEchoMode"/>
                                     <Binding Path="InputSource"/>
                                     <Binding Path="Index"/>
                                     <Binding Path="GlobalSettings"
-                 RelativeSource="{RelativeSource AncestorType=Window}"/>
+                                             RelativeSource="{RelativeSource AncestorType=Window}"/>
                                 </MultiBinding>
                             </Border.BorderBrush>
                         </Border>

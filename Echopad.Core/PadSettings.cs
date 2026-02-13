@@ -7,7 +7,7 @@ namespace Echopad.Core
         public int Index { get; set; }
 
         public string? ClipPath { get; set; }
-
+        public string? PadName { get; set; }
         public int StartMs { get; set; }
         public int EndMs { get; set; }
 
@@ -57,7 +57,7 @@ namespace Echopad.Core
                 // sensible defaults
                 InputSource = 1,
                 PreviewToMonitor = false,
-
+                PadName = null,
                 MidiLedActiveEnabled = true,
                 MidiLedRunningEnabled = true,
                 MidiLedClearEnabled = true,

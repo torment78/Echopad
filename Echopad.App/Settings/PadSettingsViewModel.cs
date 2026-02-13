@@ -134,7 +134,17 @@ namespace Echopad.App.Settings
                 OnPropertyChanged();
             }
         }
-
+        private string? _padName;
+        public string? PadName
+        {
+            get => _padName;
+            set
+            {
+                if (_padName == value) return;
+                _padName = value;
+                OnPropertyChanged();
+            }
+        }
         private bool _previewToMonitor;
         public bool PreviewToMonitor
         {
@@ -463,7 +473,7 @@ namespace Echopad.App.Settings
             ps.ClipPath = ClipPath;
             ps.StartMs = StartMs;
             ps.EndMs = EndMs;
-
+            ps.PadName = PadName;
             ps.InputSource = InputSource;
             ps.PreviewToMonitor = PreviewToMonitor;
 
@@ -499,7 +509,7 @@ namespace Echopad.App.Settings
             ClipPath = ps.ClipPath;
             StartMs = ps.StartMs;
             EndMs = ps.EndMs;
-
+            PadName = ps.PadName;
             InputSource = ps.InputSource;
             PreviewToMonitor = ps.PreviewToMonitor;
 
@@ -530,7 +540,7 @@ namespace Echopad.App.Settings
             _pad.PreviewToMonitor = PreviewToMonitor;
             _pad.IsEchoMode = IsEchoMode;
             _pad.IsDropFolderMode = IsDropFolderMode;
-
+            _pad.PadName = PadName;
             // Keep pad state sane. (Per pad, runtime)
             if (string.IsNullOrWhiteSpace(ClipPath))
                 _pad.State = IsEchoMode ? PadState.Armed : PadState.Empty;

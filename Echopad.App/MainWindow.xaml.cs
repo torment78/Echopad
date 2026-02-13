@@ -29,8 +29,11 @@ namespace Echopad.App
         // =====================================================
         // AUDIO
         // =====================================================
-        private readonly Echopad.Audio.IAudioEngine _audio =
-            new Echopad.Audio.AudioEngine();
+        // OLD:
+        private readonly Echopad.Audio.IAudioEngine _audio = new Echopad.Audio.AudioEngine();
+        
+        // NEW:
+        //private readonly Echopad.Audio.AudioEngine _audio = new Echopad.Audio.AudioEngine();
         // NEW: rolling buffer commit -> wav -> assign pad
         private readonly RollingBufferCommitService _bufferCommit = new RollingBufferCommitService();
         // =====================================================
@@ -43,6 +46,14 @@ namespace Echopad.App
         // =====================================================
         private bool _padSettingsDialogOpen;   // any pad editor open
         private bool _forcePreviewInEditMode = true; // if you want edit mode ALWAYS preview
+
+        // prevent settings dialog opening multiple times
+        private bool _settingsDialogOpen;
+
+        // NEW: prevents async-void PlayRequested re-entry (layering)
+        private readonly HashSet<int> _startingPads = new();
+
+
         // =====================================================
         // PROFILES (NEW)
         // =====================================================
@@ -93,8 +104,12 @@ namespace Echopad.App
         private DateTime _lastMidiActionUtc = DateTime.MinValue;
         private readonly Dictionary<int, DateTime> _lastMidiPadUtc = new();
 
-        // prevent settings dialog opening multiple times
-        private bool _settingsDialogOpen;
+        // NEW: debounce mouse clicks per pad (prevents rapid click storms toggling state)
+        private readonly Dictionary<int, DateTime> _lastMousePadUtc = new();
+
+        // NEW: tiny action lockout per pad to avoid race with PlaybackStopped / end events
+        private readonly Dictionary<int, DateTime> _padActionLockUntilUtc = new();
+
 
         // XAML needs to bind to this (and it must update when you reload)
         public GlobalSettings GlobalSettings
@@ -151,7 +166,31 @@ namespace Echopad.App
         public MainWindow()
         {
             InitializeComponent();
+            _audio.PadPlaybackEnded += padIndex =>
+            {
+                Dispatcher.BeginInvoke(new Action(() =>
+                {
+                    if (DataContext is not MainViewModel vm) return;
+                    if (padIndex < 1 || padIndex > vm.Pads.Count) return;
 
+                    var pad = vm.Pads[padIndex - 1];
+
+                    // Stop UI playhead timer (if any)
+                    try { StopPlayhead(pad); } catch { }
+
+                    // Normalize state based on whether a valid clip exists
+                    bool hasFile = !string.IsNullOrWhiteSpace(pad.ClipPath) && File.Exists(pad.ClipPath);
+
+                    pad.State = hasFile
+                        ? PadState.Loaded
+                        : (pad.IsEchoMode ? PadState.Armed : PadState.Empty);
+
+                    // Reset playhead to start leg (optional but usually desired)
+                    pad.PlayheadMs = pad.StartMs;
+
+                    UpdatePadLedForCurrentState(pad);
+                }), DispatcherPriority.Background);
+            };
             var vm = new MainViewModel();
             DataContext = vm;
 
@@ -183,64 +222,128 @@ namespace Echopad.App
             };
 
             _controller = new PadActionController(vm.Pads);
-            // NEW: persist CTRL-copy results immediately so hydration won't wipe them
+            // NEW: engine-end finalizer (single source of truth when playback actually ends)
+            _audio.PadPlaybackEnded += padIndex =>
+            {
+                Dispatcher.BeginInvoke(new Action(() =>
+                {
+                    try
+                    {
+                        if (DataContext is not MainViewModel mvm) return;
+                        if (padIndex < 1 || padIndex > mvm.Pads.Count) return;
+
+                        var pad = mvm.Pads[padIndex - 1];
+
+                        // Release busy + stop UI playhead
+                        pad.IsBusy = false;
+                        StopPlayhead(pad);
+
+                        // Finalize state based on whether clip exists
+                        bool hasFile = !string.IsNullOrWhiteSpace(pad.ClipPath) && File.Exists(pad.ClipPath);
+
+                        if (hasFile)
+                            pad.State = PadState.Loaded;
+                        else
+                            pad.State = pad.IsEchoMode ? PadState.Armed : PadState.Empty;
+
+                        // Snap playhead to end if we know it; otherwise keep sane
+                        if (pad.EndMs > 0)
+                            pad.PlayheadMs = pad.EndMs;
+                        else if (pad.ClipDuration > TimeSpan.Zero)
+                            pad.PlayheadMs = (int)pad.ClipDuration.TotalMilliseconds;
+
+                        UpdatePadLedForCurrentState(pad);
+
+                        // NEW: small lock so a click landing on the exact end-frame doesn't restart
+                        LockPadAction(padIndex, 180);
+                    }
+                    catch { }
+                }), DispatcherPriority.Background);
+            };
+
             _controller.PadCopied += Controller_PadCopied;
 
             _controller.PlayRequested += async pad =>
             {
-                if (string.IsNullOrWhiteSpace(pad.ClipPath) || !File.Exists(pad.ClipPath))
-                {
-                    pad.State = pad.IsEchoMode ? PadState.Armed : PadState.Empty;
-                    UpdatePadLedForCurrentState(pad);
+                if (pad == null)
                     return;
-                }
 
-                pad.State = PadState.Playing;
-                UpdatePadLedForCurrentState(pad);
+                // NEW: prevent async re-entry / layering
+                if (_startingPads.Contains(pad.Index))
+                    return;
 
-                StartPlayhead(pad);
+                _startingPads.Add(pad.Index);
 
-                bool isEdit = (DataContext as MainViewModel)?.IsEditMode == true;
-
-                // FORCE rules:
-                // - If a PadSettings window is open -> preview ALWAYS
-                // - If EditMode is on (and you want it forced) -> preview ALWAYS
-                // - Otherwise fallback to per-pad toggle
-                bool preview =
-    _padSettingsDialogOpen ||
-    (_forcePreviewInEditMode && isEdit) ||
-    pad.PreviewToMonitor;
-
-
-
-                // =========================================================
-                // NEW: Use endpoint-based output when AudioEngine supports it
-                // - Out1 = main lane
-                // - Out2 = monitor lane
-                // - each can be Local or VBAN
-                // =========================================================
-                if (_audio is AudioEngine ae)
+                try
                 {
-                    // Build endpoints from GlobalSettings
-                    // NOTE: Until your Settings UI writes VBAN config into GlobalSettings,
-                    // we default to Local using your existing MainOutDeviceId/MonitorOutDeviceId.
-                    var out1 = BuildOut1FromSettings();
-                    var out2 = BuildOut2FromSettings();
+                    // Validate clip exists
+                    if (string.IsNullOrWhiteSpace(pad.ClipPath) || !File.Exists(pad.ClipPath))
+                    {
+                        pad.IsBusy = false;
+                        pad.State = pad.IsEchoMode ? PadState.Armed : PadState.Empty;
+                        StopPlayhead(pad);
+                        UpdatePadLedForCurrentState(pad);
+                        return;
+                    }
 
-                    await ae.PlayPadAsync(pad, out1, out2, previewToMonitor: preview);
+                    // IMPORTANT:
+                    // Do NOT early-return just because pad.State is Playing / IsBusy,
+                    // because the controller already set those BEFORE raising PlayRequested.
+
+                    // Ensure UI is consistent (safe even if already set)
+                    pad.State = PadState.Playing;
+                    pad.IsBusy = true;
+
+                    UpdatePadLedForCurrentState(pad);
+                    StartPlayhead(pad);
+
+                    bool isEdit = (DataContext as MainViewModel)?.IsEditMode == true;
+
+                    bool preview =
+                        _padSettingsDialogOpen ||
+                        (_forcePreviewInEditMode && isEdit) ||
+                        pad.PreviewToMonitor;
+
+                    // Play (engine)
+                    if (_audio is AudioEngine ae)
+                    {
+                        var out1 = BuildOut1FromSettings();
+                        var out2 = BuildOut2FromSettings();
+
+                        await ae.PlayPadAsync(pad, out1, out2, previewToMonitor: preview);
+                    }
+                    else
+                    {
+                        await _audio.PlayPadAsync(
+                            pad,
+                            mainOutDeviceId: _globalSettings.MainOutDeviceId,
+                            monitorOutDeviceId: _globalSettings.MonitorOutDeviceId,
+                            previewToMonitor: preview
+                        );
+                    }
+
+                    // Don’t clear IsBusy here — your end/stop handlers should do that.
+                    UpdatePadLedForCurrentState(pad);
                 }
-                else
+                catch (Exception ex)
                 {
-                    // Hard fallback (shouldn't happen, but keeps compile-safe)
-                    await _audio.PlayPadAsync(
-                        pad,
-                        mainOutDeviceId: _globalSettings.MainOutDeviceId,
-                        monitorOutDeviceId: _globalSettings.MonitorOutDeviceId,
-                        previewToMonitor: preview
-                    );
-                }
+                    Debug.WriteLine("[PlayRequested] Failed: " + ex);
 
-                UpdatePadLedForCurrentState(pad);
+                    try { StopPlayhead(pad); } catch { }
+
+                    pad.IsBusy = false;
+
+                    bool hasFile = !string.IsNullOrWhiteSpace(pad.ClipPath) && File.Exists(pad.ClipPath);
+                    pad.State = hasFile
+                        ? PadState.Loaded
+                        : (pad.IsEchoMode ? PadState.Armed : PadState.Empty);
+
+                    UpdatePadLedForCurrentState(pad);
+                }
+                finally
+                {
+                    _startingPads.Remove(pad.Index);
+                }
             };
 
 
@@ -248,7 +351,8 @@ namespace Echopad.App
             {
                 _audio.StopPad(pad);
                 StopPlayhead(pad);
-
+                pad.IsBusy = false;
+                LockPadAction(pad.Index, 160);
                 pad.State = (!string.IsNullOrWhiteSpace(pad.ClipPath) && File.Exists(pad.ClipPath))
                     ? PadState.Loaded
                     : PadState.Empty;
@@ -470,6 +574,28 @@ namespace Echopad.App
             return o;
         }
 
+        // NEW: ignore MIDI input briefly (prevents MIDI OUT LED feedback from triggering actions)
+        private DateTime _ignoreMidiUntilUtc = DateTime.MinValue;
+
+        private void SuppressMidiInput(int ms)
+        {
+            var until = DateTime.UtcNow.AddMilliseconds(ms);
+            if (until > _ignoreMidiUntilUtc)
+                _ignoreMidiUntilUtc = until;
+        }
+        // NEW: block pad actions for a very short window (prevents click->restart races)
+        private bool IsPadActionLocked(int padIndex)
+        {
+            if (_padActionLockUntilUtc.TryGetValue(padIndex, out var until))
+                return DateTime.UtcNow < until;
+
+            return false;
+        }
+
+        private void LockPadAction(int padIndex, int ms = 140)
+        {
+            _padActionLockUntilUtc[padIndex] = DateTime.UtcNow.AddMilliseconds(ms);
+        }
 
 
         // =====================================================
@@ -671,7 +797,9 @@ namespace Echopad.App
             {
                 var ev = e.MidiEvent;
                 if (ev == null) return;
-
+                // NEW: block feedback-loop MIDI (LED echoes, etc.)
+                if (DateTime.UtcNow < _ignoreMidiUntilUtc)
+                    return;
                 // 1) LEARN MODE (one-shot)
                 var learn = _pendingMidiLearn;
                 if (learn != null)
@@ -881,13 +1009,45 @@ namespace Echopad.App
             try
             {
                 var gs = _settingsService.Load();
+
+                // OLD:
+                // _profiles.SavePadsToProfile(gs, ActiveProfileIndex);
+
+                // NEW: save pads into the active profile
                 _profiles.SavePadsToProfile(gs, ActiveProfileIndex);
+
+                // NEW: If we are editing Profile 1 and lock mode is enabled,
+                // then auto-fill the ProfileSwitch slots immediately.
+                if (ActiveProfileIndex == 1)
+                {
+                    bool lockMidi = gs.ProfileSwitch?.PadsMidiSameAsProfile1 == true;
+                    bool lockMidiAndHotkeys = gs.ProfileSwitch?.PadsMidiAndHotkeysSameAsProfile1 == true;
+
+                    // If both true in dirty JSON, prefer stronger mode
+                    if (lockMidi && lockMidiAndHotkeys)
+                        lockMidi = false;
+
+                    if (lockMidi || lockMidiAndHotkeys)
+                    {
+                        _profiles.SyncProfileSwitchSlotsFromProfile1Pads(
+                            gs,
+                            includeHotkeys: lockMidiAndHotkeys
+                        );
+
+                        // Persist updated ProfileSwitch slot binds
+                        _settingsService.Save(gs);
+
+                        // Keep runtime snapshot fresh
+                        GlobalSettings = gs;
+                    }
+                }
             }
             catch (Exception ex)
             {
                 Debug.WriteLine("[Profile] PersistPadsToActiveProfile failed: " + ex.Message);
             }
         }
+
 
         private static bool IsPress(NAudio.Midi.MidiEvent ev, MidiBind bind)
         {
@@ -1114,9 +1274,14 @@ namespace Echopad.App
         // =====================================================
         // HYDRATE PADS FROM PERSISTED SETTINGS
         // =====================================================
+        // =====================================================
+        // HYDRATE PADS FROM PERSISTED SETTINGS
+        // (SAFE VERSION – does NOT overwrite runtime Playing state)
+        // =====================================================
         private void HydratePadsFromSettings(MainViewModel vm)
         {
-            if (vm?.Pads == null) return;
+            if (vm?.Pads == null)
+                return;
 
             GlobalSettings = _settingsService.Load();
 
@@ -1124,51 +1289,74 @@ namespace Echopad.App
             {
                 var ps = _globalSettings.GetOrCreatePad(pad.Index);
 
+                // -------------------------------------------------
+                // Core persisted values
+                // -------------------------------------------------
                 pad.ClipPath = ps.ClipPath;
                 pad.StartMs = ps.StartMs;
                 pad.EndMs = ps.EndMs;
-
+                pad.PadName = ps.PadName;
                 pad.InputSource = ps.InputSource <= 0 ? 1 : ps.InputSource;
                 pad.PreviewToMonitor = ps.PreviewToMonitor;
 
                 pad.IsDropFolderMode = ps.IsDropFolderMode;
                 pad.IsEchoMode = ps.IsEchoMode;
 
-                // NEW: Mutual exclusion on hydration (prefer Drop for safety)
-                // If an old settings file has both enabled, force Echo OFF.
+                // Safety: mutual exclusion
                 if (pad.IsDropFolderMode && pad.IsEchoMode)
                 {
                     pad.IsEchoMode = false;
-
-                    // Keep persisted settings sane too (self-heal)
                     ps.IsEchoMode = false;
                 }
 
-                if (!string.IsNullOrWhiteSpace(pad.ClipPath) && File.Exists(pad.ClipPath))
+                bool hasFile =
+                    !string.IsNullOrWhiteSpace(pad.ClipPath) &&
+                    File.Exists(pad.ClipPath);
+
+                if (hasFile)
                 {
                     pad.ClipDuration = SafeReadDuration(pad.ClipPath);
 
-                    var total = (int)pad.ClipDuration.TotalMilliseconds;
+                    int total = (int)pad.ClipDuration.TotalMilliseconds;
+
                     if (total > 0)
                     {
-                        if (pad.EndMs <= 0 || pad.EndMs > total) pad.EndMs = total;
-                        if (pad.StartMs < 0) pad.StartMs = 0;
-                        if (pad.StartMs > pad.EndMs) pad.StartMs = pad.EndMs;
+                        if (pad.EndMs <= 0 || pad.EndMs > total)
+                            pad.EndMs = total;
+
+                        if (pad.StartMs < 0)
+                            pad.StartMs = 0;
+
+                        if (pad.StartMs > pad.EndMs)
+                            pad.StartMs = pad.EndMs;
                     }
 
-                    pad.State = PadState.Loaded;
+                    // NEVER override Playing
+                    if (pad.State != PadState.Playing &&
+                        pad.State != PadState.Loaded)
+                    {
+                        pad.State = PadState.Loaded;
+                    }
                 }
                 else
                 {
                     pad.ClipDuration = TimeSpan.Zero;
 
-                    // NEW: if EchoMode is on and no clip, show Armed
-                    pad.State = pad.IsEchoMode ? PadState.Armed : PadState.Empty;
+                    if (pad.State != PadState.Playing)
+                    {
+                        pad.State = pad.IsEchoMode
+                            ? PadState.Armed
+                            : PadState.Empty;
+                    }
                 }
 
-                pad.PlayheadMs = pad.StartMs;
+                // Only snap playhead if NOT playing
+                if (pad.State != PadState.Playing)
+                    pad.PlayheadMs = pad.StartMs;
             }
         }
+
+
         private void BtnProfileSquircle_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
             if (!Keyboard.Modifiers.HasFlag(ModifierKeys.Control))
@@ -1185,44 +1373,87 @@ namespace Echopad.App
         {
             newIndex = Math.Clamp(newIndex, 1, 16);
 
+            if (newIndex == ActiveProfileIndex)
+                return;
+
             try
             {
-                // 1) Save current pad-set into current profile slot (profiles.json)
-                _profiles.SavePadsToProfile(GlobalSettings, ActiveProfileIndex);
+                SuppressMidiInput(900);
 
-                // 2) Set new active index in profiles.json
+                // =====================================================
+                // 1. HARD STOP EVERYTHING (no layered playback)
+                // =====================================================
+                if (DataContext is MainViewModel mvm)
+                {
+                    foreach (var pad in mvm.Pads)
+                    {
+                        try { _audio.StopPad(pad); } catch { }
+                        try { StopPlayhead(pad); } catch { }
+
+                        pad.IsBusy = false;
+
+                        bool hasFile =
+                            !string.IsNullOrWhiteSpace(pad.ClipPath) &&
+                            File.Exists(pad.ClipPath);
+
+                        pad.State = hasFile
+                            ? PadState.Loaded
+                            : (pad.IsEchoMode ? PadState.Armed : PadState.Empty);
+
+                        pad.PlayheadMs = pad.StartMs;
+                    }
+                }
+
+                // =====================================================
+                // 2. Save CURRENT profile pads
+                // =====================================================
+                var currentGs = _settingsService.Load();
+                _profiles.SavePadsToProfile(currentGs, ActiveProfileIndex);
+
+                // =====================================================
+                // 3. Set new active profile
+                // =====================================================
                 _profiles.SetActiveProfileIndex(newIndex);
                 ActiveProfileIndex = newIndex;
 
-                // 3) Apply target profile pads into settings.json (so existing code keeps working)
+                // =====================================================
+                // 4. Apply target profile to settings.json
+                // =====================================================
                 var gs = _settingsService.Load();
                 _profiles.ApplyProfileToSettings(gs, ActiveProfileIndex);
-                
+
                 // =====================================================
-                // NEW (bool flags from ProfileManagerWindow)
+                // 5. Apply Profile 1 overlay if enabled
                 // =====================================================
                 bool lockMidi = gs.ProfileSwitch?.PadsMidiSameAsProfile1 == true;
                 bool lockMidiAndHotkeys = gs.ProfileSwitch?.PadsMidiAndHotkeysSameAsProfile1 == true;
 
-                // if both true in dirty json, prefer stronger option
                 if (lockMidi && lockMidiAndHotkeys)
                     lockMidi = false;
 
                 if (lockMidi || lockMidiAndHotkeys)
                 {
-                    _profiles.OverlayPadMapFromProfile1(gs, includeHotkeys: lockMidiAndHotkeys);
+                    _profiles.OverlayPadMapFromProfile1(
+                        gs,
+                        includeHotkeys: lockMidiAndHotkeys
+                    );
                 }
 
-                // Persist the overlay into settings.json so the running app uses it
                 _settingsService.Save(gs);
 
-                // 4) Reload and hydrate UI
+                // =====================================================
+                // 6. Reload runtime memory
+                // =====================================================
                 GlobalSettings = _settingsService.Load();
 
-                if (DataContext is MainViewModel mvm)
-                    HydratePadsFromSettings(mvm);
+                if (DataContext is MainViewModel mvm2)
+                    HydratePadsFromSettings(mvm2);
 
-                // 5) LEDs
+                SuppressMidiInput(500);
+
+                // =====================================================
+                // 7. Re-sync LEDs
+                // =====================================================
                 SyncAllPadLeds();
             }
             catch (Exception ex)
@@ -1230,6 +1461,8 @@ namespace Echopad.App
                 Debug.WriteLine("[Profile] Switch failed: " + ex.Message);
             }
         }
+
+
 
         private void ApplyProfile1PadMidiLockIfEnabled(GlobalSettings gs)
         {
@@ -1489,6 +1722,7 @@ namespace Echopad.App
 
         private void OpenPadSettingsWindow(PadModel pad)
         {
+            // Guard: prevent re-entrancy
             if (_padSettingsDialogOpen)
                 return;
 
@@ -1496,11 +1730,42 @@ namespace Echopad.App
 
             try
             {
+                // =====================================================
+                // HARD STOP before opening settings (prevents layering)
+                // =====================================================
+                try { _audio.StopPad(pad); } catch { }
+                try { StopPlayhead(pad); } catch { }
+
+                // normalize UI state after stop
+                pad.State = (!string.IsNullOrWhiteSpace(pad.ClipPath) && File.Exists(pad.ClipPath))
+                    ? PadState.Loaded
+                    : (pad.IsEchoMode ? PadState.Armed : PadState.Empty);
+
+                UpdatePadLedForCurrentState(pad);
+
+                // =====================================================
+                // Open dialog
+                // =====================================================
                 var vm = new PadSettingsViewModel(pad, _settingsService);
                 var win = new PadSettingsWindow(vm) { Owner = this };
-                win.ShowDialog();
 
+                // IMPORTANT:
+                // - OK should set DialogResult=true in the window
+                // - Cancel/Close should be false/null
+                var ok = win.ShowDialog() == true;
+
+                // Block Echo commit briefly after closing (prevents re-commit on mouse-up)
                 _controller.BlockEchoCommit(pad.Index, 650);
+
+                // NEW: swallow the NEXT pad click after dialog closes
+                // (this prevents the click that closed the dialog from re-triggering the pad grid)
+                _suppressNextClick.Add(pad.Index);
+
+                if (ok)
+                {
+                    // Persist pad changes into active profile too (your helper already exists)
+                    PersistPadsToActiveProfile();
+                }
 
                 if (DataContext is MainViewModel mvm)
                     HydratePadsFromSettings(mvm);
@@ -1513,9 +1778,17 @@ namespace Echopad.App
             }
             finally
             {
-                _padSettingsDialogOpen = false;
+                // IMPORTANT: do NOT drop the guard at DispatcherPriority.Input
+                // Background/ContextIdle prevents click-through much more reliably.
+                Dispatcher.BeginInvoke(new Action(() =>
+                {
+                    _padSettingsDialogOpen = false;
+                }), DispatcherPriority.Background);
             }
         }
+
+
+
 
 
 
@@ -1738,18 +2011,70 @@ namespace Echopad.App
 
         private void PadButton_Click(object sender, RoutedEventArgs e)
         {
-            if (sender is not Button btn) return;
-            if (btn.Tag is not PadModel pad) return;
+            // DEBUG: prove click actually reaches here
+            Debug.WriteLine("[MOUSE] PadButton_Click fired");
 
-            if (_suppressNextClick.Remove(pad.Index))
+            // Guard: if a pad settings dialog is open, ignore any pad clicks (prevents OK/close bleed)
+            if (_padSettingsDialogOpen)
+            {
+                Debug.WriteLine("[MOUSE] BLOCKED: _padSettingsDialogOpen == true");
                 return;
+            }
+
+            if (sender is not Button btn)
+            {
+                Debug.WriteLine("[MOUSE] BLOCKED: sender is not Button");
+                return;
+            }
+
+            if (btn.Tag is not PadModel pad)
+            {
+                Debug.WriteLine("[MOUSE] BLOCKED: btn.Tag is not PadModel");
+                return;
+            }
+
+            Debug.WriteLine($"[MOUSE] Pad={pad.Index} State={pad.State} Busy={pad.IsBusy} HasClip={(string.IsNullOrWhiteSpace(pad.ClipPath) ? "NO" : "YES")}");
+
+            // Guard: hold-to-clear suppress
+            if (_suppressNextClick.Remove(pad.Index))
+            {
+                Debug.WriteLine("[MOUSE] BLOCKED: _suppressNextClick removed pad");
+                return;
+            }
+
+            var now = DateTime.UtcNow;
+
+            if (_lastMousePadUtc.TryGetValue(pad.Index, out var last) &&
+                (now - last).TotalMilliseconds < 170)
+            {
+                Debug.WriteLine("[MOUSE] BLOCKED: mouse debounce 170ms");
+                return;
+            }
+            _lastMousePadUtc[pad.Index] = now;
+
+           // if (IsPadActionLocked(pad.Index))
+            //{
+              //  Debug.WriteLine("[MOUSE] BLOCKED: IsPadActionLocked == true");
+                ///return;
+            //}
+
+            Debug.WriteLine("[MOUSE] PASS: calling ActivatePad()");
+           //LockPadAction(pad.Index, 160);
 
             RememberLastActivatedPad(pad.Index);
             _controller.ActivatePad(pad.Index);
         }
 
+
+
+
+
         private void PadButton_MouseRightButtonUp(object sender, MouseButtonEventArgs e)
         {
+            // NEW: block while pad settings already open
+            if (_padSettingsDialogOpen)
+                return;
+
             if (sender is not Button btn) return;
             if (btn.Tag is not PadModel pad) return;
 
@@ -1759,6 +2084,7 @@ namespace Echopad.App
                 e.Handled = true;
             }
         }
+
 
         private void PadButton_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
@@ -1823,7 +2149,8 @@ namespace Echopad.App
                 pad.PlayheadMs = 0;
 
                 _controller.ClearPad(pad.Index);
-
+                // NEW: runtime clear (immediate)
+                pad.PadName = null;
                 // IMPORTANT: Do NOT wipe MIDI settings OR modes. Only clear clip/trim.
                 var gs = _settingsService.Load();
                 var ps = gs.GetOrCreatePad(pad.Index);
@@ -1831,7 +2158,7 @@ namespace Echopad.App
                 ps.ClipPath = null;
                 ps.StartMs = 0;
                 ps.EndMs = 0;
-
+                ps.PadName = null;
                 // KEEP THESE AS-IS (do not touch):
                 // ps.IsEchoMode
                 // ps.IsDropFolderMode
@@ -1890,16 +2217,8 @@ namespace Echopad.App
 
                 if (clipEndMs > 0 && playhead >= clipEndMs)
                 {
-                    StopPlayhead(pad);
-                    _audio.StopPad(pad);
-
                     pad.PlayheadMs = clipEndMs;
-                    pad.State = !string.IsNullOrWhiteSpace(pad.ClipPath)
-                        ? PadState.Loaded
-                        : PadState.Empty;
-
-                    // LED -> active (loaded) or empty
-                    UpdatePadLedForCurrentState(pad);
+                    StopPlayhead(pad);
                     return;
                 }
 

@@ -11,6 +11,11 @@ namespace Echopad.Core.Controllers
         private bool _isEditMode;
         private bool _copyHeld;
 
+        // =====================================================
+        // NEW: transition guard (prevents rapid re-entry / race)
+        // =====================================================
+        private readonly HashSet<int> _transitioningPads = new();
+
         public PadActionController(IList<PadModel> pads)
         {
             _pads = pads;
@@ -22,22 +27,14 @@ namespace Echopad.Core.Controllers
         public event Action<PadModel>? PlayRequested;
         public event Action<PadModel>? StopRequested;
 
-        // NEW: empty pad pressed -> request “commit last buffer to this pad”
         public event Action<PadModel>? CommitFromBufferRequested;
-
-        // NEW: fired when CTRL-copy pastes a clip to a target (so UI can persist)
-        public event Action<PadModel /*source*/, PadModel /*target*/>? PadCopied;
+        public event Action<PadModel, PadModel>? PadCopied;
 
         // =====================================================
-        // NEW: short block to prevent immediate Echo re-commit
-        // after delete / after closing settings (click-through / midi repeat)
+        // Echo commit block window
         // =====================================================
         private readonly Dictionary<int, DateTime> _echoCommitBlockedUntilUtc = new();
 
-        /// <summary>
-        /// Temporarily blocks Echo commit on a pad for a short window.
-        /// Call this after ClearPad() or when closing dialogs to prevent click-through re-trigger.
-        /// </summary>
         public void BlockEchoCommit(int padIndex, int ms = 450)
         {
             if (padIndex <= 0) return;
@@ -46,8 +43,6 @@ namespace Echopad.Core.Controllers
 
         private bool IsEchoCommitBlocked(PadModel pad)
         {
-            if (pad == null) return true;
-
             if (_echoCommitBlockedUntilUtc.TryGetValue(pad.Index, out var until))
                 return DateTime.UtcNow < until;
 
@@ -60,8 +55,6 @@ namespace Echopad.Core.Controllers
         public void SetEditMode(bool isEditMode)
         {
             _isEditMode = isEditMode;
-
-            // NEW: leaving edit mode should cancel CTRL-copy mode
             if (!_isEditMode)
                 ClearCopyState();
         }
@@ -69,8 +62,6 @@ namespace Echopad.Core.Controllers
         public void SetCopyHeld(bool held)
         {
             _copyHeld = held;
-
-            // NEW: Ctrl released = copy mode OFF
             if (!_copyHeld)
                 ClearCopyState();
         }
@@ -84,78 +75,86 @@ namespace Echopad.Core.Controllers
             if (pad == null)
                 return;
 
-            // ---------------------------------------------
-            // COPY MODE (CTRL held, edit mode only)
-            // ---------------------------------------------
+            // COPY MODE
             if (_isEditMode && _copyHeld)
             {
                 HandleCopy(pad);
                 return;
             }
 
-            // ---------------------------------------------
-            // HARD GATE: "Echo recording / commit-from-buffer"
-            // Only allowed if pad is Echo-enabled.
-            // PLUS: block window to prevent immediate re-commit
-            // after delete / dialog close / click-through.
-            // ---------------------------------------------
+            // Empty pad (Echo commit)
             if (string.IsNullOrWhiteSpace(pad.ClipPath))
             {
-                // NEW: prevent instant re-trigger
                 if (IsEchoCommitBlocked(pad))
                     return;
 
-                // NEW: empty pad click does NOTHING unless Echo mode is enabled for that pad
                 if (CanStartEchoCommit(pad))
                     CommitFromBufferRequested?.Invoke(pad);
 
                 return;
             }
 
-            // ---------------------------------------------
-            // NORMAL PLAY / STOP TOGGLE
-            // ---------------------------------------------
+            // NORMAL TOGGLE
             if (pad.State == PadState.Playing)
-            {
                 Stop(pad);
-            }
             else
-            {
                 Play(pad);
-            }
         }
 
         // =====================================================
-        // PLAY / STOP
+        // PLAY / STOP (WITH TRANSITION GUARD)
         // =====================================================
         private void Play(PadModel pad)
         {
+            // OLD:
+            // if (pad.State == PadState.Playing)
+            //     return;
+
             if (pad.State == PadState.Playing)
                 return;
+
+            // NEW: prevent re-entry while transitioning
+            if (_transitioningPads.Contains(pad.Index))
+                return;
+
+            _transitioningPads.Add(pad.Index);
 
             pad.State = PadState.Playing;
             pad.IsBusy = true;
 
             PlayRequested?.Invoke(pad);
+
+            _transitioningPads.Remove(pad.Index);
         }
 
         private void Stop(PadModel pad)
         {
+            // OLD:
+            // if (pad.State != PadState.Playing)
+            //     return;
+
             if (pad.State != PadState.Playing)
                 return;
+
+            // NEW: prevent re-entry while transitioning
+            if (_transitioningPads.Contains(pad.Index))
+                return;
+
+            _transitioningPads.Add(pad.Index);
 
             StopRequested?.Invoke(pad);
 
             pad.IsBusy = false;
 
-            // Return to loaded if clip exists
             pad.State = !string.IsNullOrWhiteSpace(pad.ClipPath)
                 ? PadState.Loaded
                 : PadState.Empty;
+
+            _transitioningPads.Remove(pad.Index);
         }
 
         // =====================================================
-        // CLEAR PAD (used by hold-to-clear)
+        // CLEAR PAD
         // =====================================================
         public void ClearPad(int padIndex)
         {
@@ -163,7 +162,6 @@ namespace Echopad.Core.Controllers
             if (pad == null)
                 return;
 
-            // NEW: prevent immediate Echo re-commit caused by mouse-up / midi repeat
             BlockEchoCommit(pad.Index, 650);
 
             StopRequested?.Invoke(pad);
@@ -173,7 +171,7 @@ namespace Echopad.Core.Controllers
             pad.StartMs = 0;
             pad.EndMs = 0;
             pad.PlayheadMs = 0;
-
+            pad.PadName = null;
             pad.InputSource = 1;
             pad.PreviewToMonitor = false;
 
@@ -185,13 +183,12 @@ namespace Echopad.Core.Controllers
         }
 
         // =====================================================
-        // CTRL-COPY (EDIT MODE) - PERSIST UNTIL CTRL RELEASE
+        // CTRL COPY
         // =====================================================
         private PadModel? _copySource;
 
         private void ClearCopyState()
         {
-            // NEW: clear ALL copy visuals (source + any targets)
             foreach (var p in _pads)
             {
                 if (p.ClipMod == ClipMod.CopySource || p.ClipMod == ClipMod.CopiedTarget)
@@ -203,31 +200,24 @@ namespace Echopad.Core.Controllers
 
         private void HandleCopy(PadModel clicked)
         {
-            // 1) If no source: first CTRL+click sets source (must have a clip)
             if (_copySource == null)
             {
                 if (string.IsNullOrWhiteSpace(clicked.ClipPath))
-                    return; // no-op: can't copy from empty
+                    return;
 
                 _copySource = clicked;
                 _copySource.ClipMod = ClipMod.CopySource;
-                return; // IMPORTANT: do NOT paste on the first click
+                return;
             }
 
-            // 2) If clicking source again: no-op
             if (ReferenceEquals(_copySource, clicked))
                 return;
 
-            // 3) Paste to target (repeatable)
             CopyPad(_copySource, clicked);
 
-            // Optional visual marker for target (non-blocking)
             clicked.ClipMod = ClipMod.CopiedTarget;
-
-            // NEW: tell UI layer to persist target clip assignment immediately
             PadCopied?.Invoke(_copySource, clicked);
 
-            // NEW: keep source armed until CTRL is released
             _copySource.ClipMod = ClipMod.CopySource;
         }
 
@@ -235,13 +225,8 @@ namespace Echopad.Core.Controllers
         {
             dst.ClipPath = src.ClipPath;
             dst.ClipDuration = src.ClipDuration;
-
             dst.StartMs = src.StartMs;
             dst.EndMs = src.EndMs;
-
-            // OLD (not wanted - copies in/out routing too)
-            // dst.InputSource = src.InputSource;
-            // dst.PreviewToMonitor = src.PreviewToMonitor;
 
             dst.State = !string.IsNullOrWhiteSpace(dst.ClipPath)
                 ? PadState.Loaded
@@ -249,14 +234,10 @@ namespace Echopad.Core.Controllers
         }
 
         // =====================================================
-        // ECHO COMMIT GATE (NO ACCIDENTAL RECORDS)
+        // ECHO COMMIT GATE
         // =====================================================
         private static bool CanStartEchoCommit(PadModel pad)
         {
-            // Hard gate we can enforce today:
-            // - pad must be Echo-enabled
-            // - pad must NOT be Drop-enabled (mutual exclusion rule)
-            // - pad must not be busy
             if (!pad.IsEchoMode)
                 return false;
 
@@ -266,7 +247,6 @@ namespace Echopad.Core.Controllers
             if (pad.IsBusy || pad.State == PadState.Playing)
                 return false;
 
-            // empty pad already implied by caller
             return true;
         }
 

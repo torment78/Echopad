@@ -161,7 +161,53 @@ namespace Echopad.App.Services
                     dst.PadHotkey = src.PadHotkey;
             }
         }
+        public void SyncProfileSwitchSlotsFromProfile1Pads(GlobalSettings gs, bool includeHotkeys)
+        {
+            if (gs == null)
+                return;
 
+            gs.ProfileSwitch ??= new ProfileSwitchSettings();
+            gs.ProfileSwitch.EnsureSlots();
+
+            // Make sure Profile 1 exists / seeded
+            EnsureSeedFromCurrentSettings(gs);
+
+            var p1Pads = GetPadsForProfile(1);
+            if (p1Pads == null || p1Pads.Count == 0)
+                return;
+
+            // Slot 1..16 <-> Pad 1..16
+            for (int i = 1; i <= 16 && i <= gs.ProfileSwitch.Slots.Count; i++)
+            {
+                if (!p1Pads.TryGetValue(i, out var ps) || ps == null)
+                    continue;
+
+                var slot = gs.ProfileSwitch.Slots[i - 1];
+                if (slot == null)
+                    continue;
+
+                // Fill MIDI bind if empty
+                if (string.IsNullOrWhiteSpace(slot.MidiBind) &&
+                    !string.IsNullOrWhiteSpace(ps.MidiTriggerDisplay))
+                {
+                    slot.MidiBind = ps.MidiTriggerDisplay;
+                }
+
+                // Fill hotkey bind if enabled + empty
+                if (includeHotkeys &&
+                    string.IsNullOrWhiteSpace(slot.HotkeyBind) &&
+                    !string.IsNullOrWhiteSpace(ps.PadHotkey))
+                {
+                    slot.HotkeyBind = ps.PadHotkey;
+                }
+
+                // Optional: keep names aligned if empty
+                if (string.IsNullOrWhiteSpace(slot.Name) && !string.IsNullOrWhiteSpace(ps.PadName))
+                {
+                    slot.Name = ps.PadName;
+                }
+            }
+        }
         // -------------------------------------------------
         // Seeding (Profile 1 from current pads)
         // -------------------------------------------------
@@ -187,21 +233,7 @@ namespace Echopad.App.Services
             }
         }
 
-        // -------------------------------------------------
-        // Mirror runtime pad set into a profile slot
-        // -------------------------------------------------
-
-        // OLD:
-        // public void SavePadsToProfile(GlobalSettings gs, int profileIndex)
-        // {
-        //     var p = GetProfile(profileIndex);
-        //
-        //     p.Pads = gs?.Pads != null
-        //         ? ClonePadDictionary(gs.Pads)
-        //         : new System.Collections.Generic.Dictionary<int, PadSettings>();
-        //
-        //     UpdateProfile(p);
-        // }
+        
 
         // NEW: optional preserve of existing MIDI/hotkeys (fixes "random" save wipe)
         public void SavePadsToProfile(GlobalSettings gs, int profileIndex, bool preserveExistingMidiAndHotkeys)

@@ -10,6 +10,7 @@ namespace Echopad.App
     {
         private void SyncAllPadLeds()
         {
+            SuppressMidiInput(250);
             if (DataContext is not MainViewModel vm)
                 return;
 

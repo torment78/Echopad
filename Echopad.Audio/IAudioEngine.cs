@@ -6,11 +6,13 @@ namespace Echopad.Audio
 {
     public interface IAudioEngine
     {
-        // NEW: fired when a pad finishes (or stops) so UI can reset state
         event Action<int>? PadPlaybackEnded; // padIndex
 
-        // Output routing driven by GlobalSettings device IDs
+        // LEGACY signature (used by older UI)
         Task PlayPadAsync(PadModel pad, string? mainOutDeviceId, string? monitorOutDeviceId, bool previewToMonitor);
+
+        // NEW signature (used by your current MainWindow endpoint code)
+        Task PlayPadAsync(PadModel pad, OutputEndpointSettings out1, OutputEndpointSettings out2, bool previewToMonitor);
 
         void StopPad(PadModel pad);
     }

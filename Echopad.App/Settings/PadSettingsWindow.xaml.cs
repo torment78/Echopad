@@ -93,29 +93,58 @@ namespace Echopad.App.Settings
             };
         }
 
+        private void ClearPadName_Click(object sender, RoutedEventArgs e)
+        {
+            if (DataContext is PadSettingsViewModel vm)
+                vm.PadName = null;
+        }
+
         // =====================================================
         // OK / Cancel
         // =====================================================
+
+        // NEW: hard-stop preview BEFORE closing (prevents “OK starts playback” + leaking audio into MainWindow)
+        private void StopPreviewBeforeClose()
+        {
+            try
+            {
+                // If currently playing, stop cleanly so PlaybackStopped runs deterministically.
+                _autoStopping = true;
+                try { _previewOut?.Stop(); } catch { }
+
+                // Then fully dispose everything (guarantees no leak)
+                DisposePreview();
+            }
+            catch { }
+        }
+
         private void Ok_Click(object sender, RoutedEventArgs e)
         {
+            // NEW: stop preview first (fixes click-through + state mismatch issues)
+            StopPreviewBeforeClose();
+
             _vm.Save();
 
-            // NEW: also persist into the active profile slot (profiles.json)
-            if (Owner is MainWindow mw)
-            {
-                try
-                {
-                    mw.PersistPadsToActiveProfile(); // NEW (you add this method in MainWindow)
-                }
-                catch { }
-            }
+            // OLD (causes compile error if missing):
+            // mw.PersistPadsToActiveProfile();
+
+            // NEW: keep this commented until you actually add that method in MainWindow.
+            // If you already persist profiles inside MainWindow after the dialog closes,
+            // you do NOT need this call here.
+            //
+            // if (Owner is MainWindow mw)
+            // {
+            //     try { mw.PersistPadsToActiveProfile(); } catch { }
+            // }
 
             DialogResult = true;
         }
 
-
         private void Cancel_Click(object sender, RoutedEventArgs e)
         {
+            // NEW: stop preview on cancel too
+            StopPreviewBeforeClose();
+
             DialogResult = false;
         }
 
@@ -1018,13 +1047,19 @@ namespace Echopad.App.Settings
 
         protected override void OnClosed(EventArgs e)
         {
+            // NEW: one more safety stop in case window is closed via [X]
+            StopPreviewBeforeClose();
+
             if (_renderHooked)
             {
                 CompositionTarget.Rendering -= CompositionTarget_Rendering;
                 _renderHooked = false;
             }
 
+            // OLD: DisposePreview();
+            // NEW: already disposed by StopPreviewBeforeClose(), but harmless if called twice
             DisposePreview();
+
             base.OnClosed(e);
         }
     }

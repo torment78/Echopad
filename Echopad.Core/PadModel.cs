@@ -9,7 +9,7 @@ namespace Echopad.Core
         public int Index { get; }
 
         public PadModel(int index) => Index = index;
-
+        public bool HasPadName => !string.IsNullOrWhiteSpace(PadName);
         // ======================================================
         // State
         // ======================================================
@@ -22,6 +22,17 @@ namespace Echopad.Core
                 if (_state == value) return;
                 _state = value;
                 OnPropertyChanged();
+            }
+        }
+        private string? _padName;
+        public string? PadName
+        {
+            get => _padName;
+            set
+            {
+                if (_padName == value) return;
+                _padName = value;
+                OnPropertyChanged(); // whatever your pad model uses
             }
         }
 
