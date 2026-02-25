@@ -1364,13 +1364,40 @@ namespace Echopad.App
 
             e.Handled = true;
 
+            // NEW: if locked, do nothing (SwitchToProfile also gates, this just avoids extra work)
+            if (IsProfileSwitchBlocked())
+                return;
+
             int next = ActiveProfileIndex + 1;
             if (next > 16) next = 1;
 
             SwitchToProfile(next);
         }
+        // =====================================================
+        // NEW: Global gate - block profile switching while edit windows are open
+        // =====================================================
+        private bool IsProfileSwitchBlocked()
+        {
+            // Safety belt: you already guard pad clicks with _padSettingsDialogOpen
+            // but profile switching must also respect it.
+            if (_padSettingsDialogOpen)
+                return true;
+
+            // Primary: window-based global lock (PadSettingsWindow / ProfileManagerWindow)
+            if (DataContext is MainViewModel vm && vm.IsProfileSwitchLocked)
+                return true;
+
+            return false;
+        }
+
         private void SwitchToProfile(int newIndex)
         {
+            if (IsProfileSwitchBlocked())
+            {
+                Debug.WriteLine("[Profile] Switch blocked: editor window open / lock active.");
+                return;
+            }
+
             newIndex = Math.Clamp(newIndex, 1, 16);
 
             if (newIndex == ActiveProfileIndex)

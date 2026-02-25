@@ -148,5 +148,20 @@ namespace Echopad.App.Settings
             sb.Length--; // remove trailing '+'
             return sb.ToString();
         }
+                // =========================================================
+        // NEW: Ensure VM gets disposed so profile-switch lock is released
+        // =========================================================
+        protected override void OnClosed(EventArgs e)
+        {
+            try
+            {
+                if (DataContext is IDisposable d)
+                    d.Dispose();
+            }
+            catch { }
+
+            base.OnClosed(e);
+        }
+
     }
 }

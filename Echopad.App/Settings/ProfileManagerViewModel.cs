@@ -8,7 +8,7 @@ using System.Windows.Input;
 
 namespace Echopad.App.Settings
 {
-    public sealed class ProfileManagerViewModel : INotifyPropertyChanged
+    public sealed class ProfileManagerViewModel : INotifyPropertyChanged, IDisposable
     {
         private readonly SettingsService _settingsService;
 
@@ -17,7 +17,7 @@ namespace Echopad.App.Settings
 
         // NEW: access profiles.json so we can read Profile 1 pad binds for seeding
         private readonly ProfileService _profiles;
-
+        private IDisposable? _profileSwitchLock;
         public GlobalSettings Settings { get; private set; }
 
         public ObservableCollection<ProfileSlotRowViewModel> Slots { get; } = new();
@@ -32,7 +32,30 @@ namespace Echopad.App.Settings
         // -------------------------------------------------
         // GLOBAL FIELDS
         // -------------------------------------------------
+        private bool _padsFullManual = true; // NEW default = manual unless settings says otherwise
+        public bool PadsFullManual
+        {
+            get => _padsFullManual;
+            set
+            {
+                if (_padsFullManual == value) return;
 
+                _padsFullManual = value;
+
+                if (value)
+                {
+                    // manual means no linking
+                    _padsMidiSameAsProfile1 = false;
+                    _padsMidiAndHotkeysSameAsProfile1 = false;
+                    OnPropertyChanged(nameof(PadsMidiSameAsProfile1));
+                    OnPropertyChanged(nameof(PadsMidiAndHotkeysSameAsProfile1));
+                }
+
+                OnPropertyChanged();
+                // manual => no seeding, just save
+                RequestAutoSave();
+            }
+        }
         private bool _padsMidiSameAsProfile1;
         public bool PadsMidiSameAsProfile1
         {
@@ -48,6 +71,10 @@ namespace Echopad.App.Settings
                 {
                     _padsMidiAndHotkeysSameAsProfile1 = false;
                     OnPropertyChanged(nameof(PadsMidiAndHotkeysSameAsProfile1));
+
+                    // NEW:
+                    _padsFullManual = false;
+                    OnPropertyChanged(nameof(PadsFullManual));
                 }
 
                 OnPropertyChanged();
@@ -73,6 +100,10 @@ namespace Echopad.App.Settings
                 {
                     _padsMidiSameAsProfile1 = false;
                     OnPropertyChanged(nameof(PadsMidiSameAsProfile1));
+
+                    // NEW:
+                    _padsFullManual = false;
+                    OnPropertyChanged(nameof(PadsFullManual));
                 }
 
                 OnPropertyChanged();
@@ -140,6 +171,17 @@ namespace Echopad.App.Settings
             _main = main;
             _settingsService = settingsService;
 
+
+            try
+            {
+                if (_profileSwitchLock == null && _main.DataContext is MainViewModel mvm)
+                    _profileSwitchLock = mvm.AcquireProfileSwitchLock("ProfileManagerWindow");
+            }
+            catch { }
+
+            // NEW
+            _profiles = new ProfileService(_settingsService);
+
             // NEW
             _profiles = new ProfileService(_settingsService);
 
@@ -160,15 +202,19 @@ namespace Echopad.App.Settings
             _padsMidiSameAsProfile1 = Settings.ProfileSwitch.PadsMidiSameAsProfile1;
             _padsMidiAndHotkeysSameAsProfile1 = Settings.ProfileSwitch.PadsMidiAndHotkeysSameAsProfile1;
 
+            // NEW: normalize dirty state (prefer stronger lock if both are true)
             if (_padsMidiSameAsProfile1 && _padsMidiAndHotkeysSameAsProfile1)
-                _padsMidiSameAsProfile1 = false;
+                _padsMidiSameAsProfile1 = false; // keep "MIDI+Hotkeys" as winner
+
+            // NEW: if neither lock is enabled, we're in full manual
+            _padsFullManual = !_padsMidiSameAsProfile1 && !_padsMidiAndHotkeysSameAsProfile1;
 
             OnPropertyChanged(nameof(ActiveProfileIndex));
             OnPropertyChanged(nameof(MidiModifierBind));
             OnPropertyChanged(nameof(HotkeyModifier));
             OnPropertyChanged(nameof(PadsMidiSameAsProfile1));
             OnPropertyChanged(nameof(PadsMidiAndHotkeysSameAsProfile1));
-
+            OnPropertyChanged(nameof(PadsFullManual));
             // slots rows
             Slots.Clear();
 
@@ -216,6 +262,8 @@ namespace Echopad.App.Settings
             SyncProfileSlotsFromProfile1PadsIfLocked();
 
             _isInitializing = false;
+
+
         }
 
         public void RequestAutoSave()
@@ -239,6 +287,8 @@ namespace Echopad.App.Settings
         // =========================================================
         private void SyncProfileSlotsFromProfile1PadsIfLocked()
         {
+            if (PadsFullManual)
+                return;
             if (_isInitializing)
                 return;
 
@@ -303,8 +353,16 @@ namespace Echopad.App.Settings
             gs.ProfileSwitch.MidiModifierBind = MidiModifierBind;
             gs.ProfileSwitch.HotkeyModifier = HotkeyModifier;
 
-            gs.ProfileSwitch.PadsMidiSameAsProfile1 = PadsMidiSameAsProfile1;
-            gs.ProfileSwitch.PadsMidiAndHotkeysSameAsProfile1 = PadsMidiAndHotkeysSameAsProfile1;
+            if (PadsFullManual)
+            {
+                gs.ProfileSwitch.PadsMidiSameAsProfile1 = false;
+                gs.ProfileSwitch.PadsMidiAndHotkeysSameAsProfile1 = false;
+            }
+            else
+            {
+                gs.ProfileSwitch.PadsMidiSameAsProfile1 = PadsMidiSameAsProfile1;
+                gs.ProfileSwitch.PadsMidiAndHotkeysSameAsProfile1 = PadsMidiAndHotkeysSameAsProfile1;
+            }
 
             // NEW: keep UI aligned when lock mode is on
             // (fills any empty slot binds before persisting)
@@ -325,10 +383,36 @@ namespace Echopad.App.Settings
 
             _settingsService.Save(gs);
 
-            Settings.ProfileSwitch = gs.ProfileSwitch;
-            
-            StatusText = "Saved.";
+Settings.ProfileSwitch = gs.ProfileSwitch;
+
+// =========================================================
+// NEW: Keep local snapshot aligned with what was persisted
+// (prevents radio UI getting out of sync)
+// =========================================================
+_padsMidiSameAsProfile1 = gs.ProfileSwitch.PadsMidiSameAsProfile1;
+_padsMidiAndHotkeysSameAsProfile1 = gs.ProfileSwitch.PadsMidiAndHotkeysSameAsProfile1;
+_padsFullManual = !_padsMidiSameAsProfile1 && !_padsMidiAndHotkeysSameAsProfile1;
+
+OnPropertyChanged(nameof(PadsMidiSameAsProfile1));
+OnPropertyChanged(nameof(PadsMidiAndHotkeysSameAsProfile1));
+OnPropertyChanged(nameof(PadsFullManual));
+
+StatusText = "Saved.";
         }
+
+        // =========================================================
+        // NEW: Release profile-switch lock
+        // =========================================================
+        public void Dispose()
+        {
+            try
+            {
+                _profileSwitchLock?.Dispose();
+                _profileSwitchLock = null;
+            }
+            catch { }
+        }
+
 
         public event PropertyChangedEventHandler? PropertyChanged;
         private void OnPropertyChanged([CallerMemberName] string? n = null)

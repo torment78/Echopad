@@ -20,7 +20,7 @@ namespace Echopad.App.Settings
     public partial class PadSettingsWindow : Window
     {
         private readonly PadSettingsViewModel _vm;
-
+        private IDisposable? _profileSwitchLock;
         // Prevent double-learn / re-entrancy
         private bool _isLearningMidi;
 
@@ -39,6 +39,16 @@ namespace Echopad.App.Settings
 
             Loaded += (_, __) =>
             {
+
+                try
+                {
+                    if (_profileSwitchLock == null &&
+                        Application.Current?.MainWindow?.DataContext is MainViewModel mvm)
+                    {
+                        _profileSwitchLock = mvm.AcquireProfileSwitchLock("PadSettingsWindow");
+                    }
+                }
+                catch { }
                 // IMPORTANT: Canvas must NOT steal mouse for the whole area,
                 // otherwise trim legs won't receive input.
                 if (PlayheadOverlay != null)
@@ -1049,6 +1059,16 @@ namespace Echopad.App.Settings
         {
             // NEW: one more safety stop in case window is closed via [X]
             StopPreviewBeforeClose();
+
+            // =========================================================
+            // NEW: Release profile-switch lock
+            // =========================================================
+            try
+            {
+                _profileSwitchLock?.Dispose();
+                _profileSwitchLock = null;
+            }
+            catch { }
 
             if (_renderHooked)
             {

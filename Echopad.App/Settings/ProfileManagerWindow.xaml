@@ -62,26 +62,16 @@
 
             <Grid Margin="6">
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="193*"/>
+                    <ColumnDefinition Width="194*"/>
                 </Grid.ColumnDefinitions>
 
-                <!-- Active -->
-                <StackPanel Grid.Column="0" Margin="0,0,10,0">
-                    <TextBlock Text="Active Profile (1..16)" Foreground="{DynamicResource MutedTextBrush}" Margin="0,0,0,6"/>
-                    <TextBox Background="{DynamicResource ControlBgBrush}"
-                             BorderBrush="{DynamicResource ControlBorderBrush}"
-                             Foreground="{DynamicResource TextBrush}"
-                             Height="28"
-                             Padding="10,0"
-                             Text="{Binding ActiveProfileIndex, UpdateSourceTrigger=PropertyChanged}" Width="247"/>
-                </StackPanel>
+
 
                 <!-- MIDI Modifier -->
-                <StackPanel Grid.Column="1" Margin="0,0,10,0">
-                    <TextBlock Text="MIDI Modifier (hold)" Foreground="{DynamicResource MutedTextBrush}" Margin="0,0,0,6"/>
-                    <DockPanel>
+                <StackPanel Grid.Column="0" Margin="0,0,22,0">
+                    <TextBlock Text="MIDI Modifier (hold)" Foreground="{DynamicResource MutedTextBrush}" Margin="0,0,0,6" Width="377"/>
+                    <DockPanel Width="384">
                         <TextBox DockPanel.Dock="Left"
                                  Background="{DynamicResource ControlBgBrush}"
                                  BorderBrush="{DynamicResource ControlBorderBrush}"
@@ -90,20 +80,20 @@
                                  Padding="10,0"
                                  Text="{Binding MidiModifierBind, UpdateSourceTrigger=PropertyChanged}"
                                  VerticalContentAlignment="Center"
-                                 Margin="0,0,8,0" Width="139"/>
+                                 Margin="0,0,8,0" Width="205"/>
                         <Button Style="{StaticResource EchopadTopButtonStyle}"
                                 Content="Learn"
                                 MinWidth="30"
                                 Height="28"
                                 Padding="10,0"
-                                Command="{Binding LearnMidiModifierCommand}"/>
+                                Command="{Binding LearnMidiModifierCommand}" Width="104"/>
                     </DockPanel>
                 </StackPanel>
 
                 <!-- HOTKEY Modifier -->
-                <StackPanel Grid.Column="2">
-                    <TextBlock Text="Hotkey Modifier (unlock slots)" Foreground="{DynamicResource MutedTextBrush}" Margin="0,0,0,6"/>
-                    <DockPanel>
+                <StackPanel Grid.Column="1">
+                    <TextBlock Text="Hotkey Modifier (unlock slots)" Foreground="{DynamicResource MutedTextBrush}" Margin="0,0,0,6" Width="350"/>
+                    <DockPanel Width="354">
                         <TextBox DockPanel.Dock="Left"
                                  Background="{DynamicResource ControlBgBrush}"
                                  BorderBrush="{DynamicResource ControlBorderBrush}"
@@ -112,35 +102,45 @@
                                  Padding="10,0"
                                  Text="{Binding HotkeyModifier, UpdateSourceTrigger=PropertyChanged}"
                                  VerticalContentAlignment="Center"
-                                 Margin="0,0,8,0" Width="151"/>
+                                 Margin="0,0,8,0" Width="173"/>
                         <Button Style="{StaticResource EchopadTopButtonStyle}"
                                 Content="Learn"
                                 MinWidth="30"
                                 Height="28"
                                 Padding="10,0"
-                                Click="BtnLearnHotkeyModifier_Click" Width="78"/>
+                                Click="BtnLearnHotkeyModifier_Click" Width="104"/>
                     </DockPanel>
                 </StackPanel>
             </Grid>
         </GroupBox>
         <!-- NEW: PAD MIDI LINK MODE -->
         <GroupBox Grid.Row="2" Header="Pad MIDI Linking" Margin="0,12,0,0">
-            <Grid Margin="6">
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="Auto"/>
-                </Grid.RowDefinitions>
+    <Grid Margin="6">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
 
-                <RadioButton Grid.Row="0"
+        <!-- NEW: FULL MANUAL -->
+        <RadioButton Grid.Row="0"
+                     Foreground="{DynamicResource TextBrush}"
+                     Content="Full manual (no linking) — set every pad bind per profile"
+                     IsChecked="{Binding PadsFullManual, Mode=TwoWay}"/>
+
+        <RadioButton Grid.Row="1"
+                     Margin="0,8,0,0"
+                     Foreground="{DynamicResource TextBrush}"
                      Content="All profiles use the SAME PAD MIDI as Profile 1"
                      IsChecked="{Binding PadsMidiSameAsProfile1, Mode=TwoWay}"/>
 
-                <RadioButton Grid.Row="1"
+        <RadioButton Grid.Row="2"
                      Margin="0,8,0,0"
+                     Foreground="{DynamicResource TextBrush}"
                      Content="All profiles + pad hotkeys use the SAME mapping as Profile 1"
                      IsChecked="{Binding PadsMidiAndHotkeysSameAsProfile1, Mode=TwoWay}"/>
-            </Grid>
-        </GroupBox>
+    </Grid>
+</GroupBox>
 
 
         <!-- SLOTS -->
@@ -161,7 +161,7 @@
                                         <ColumnDefinition Width="74"/>
                                         <ColumnDefinition Width="*"/>
                                         <ColumnDefinition Width="*"/>
-                                        
+
                                     </Grid.ColumnDefinitions>
                                     <Grid.RowDefinitions>
                                         <RowDefinition Height="Auto"/>
