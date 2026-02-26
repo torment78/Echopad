@@ -88,12 +88,24 @@ namespace Echopad.Audio
                 Take = TimeSpan.FromMilliseconds(playMs)
             };
 
+            // =====================================================
+            // NEW: Apply per-pad gain (dB -> linear)
+            // =====================================================
+            var gainDb = Math.Clamp(pad.GainDb, -60f, 20f);
+            var linear = (float)Math.Pow(10.0, gainDb / 20.0);
+
+            // VolumeSampleProvider can be > 1.0 for boost
+            ISampleProvider playSource = new VolumeSampleProvider(limited)
+            {
+                Volume = linear
+            };
+
             // store reader so StopPad disposes it
             _readers[pad.Index] = reader;
 
             if (endpoint.Mode == AudioEndpointMode.Vban)
             {
-                await StartVbanTxPadAsync(pad, limited, endpoint);
+                await StartVbanTxPadAsync(pad, playSource, endpoint);
                 return;
             }
 
@@ -113,7 +125,7 @@ namespace Echopad.Audio
                 catch { }
             };
 
-            player.Init(limited.ToWaveProvider());
+            player.Init(playSource.ToWaveProvider());
             _players[pad.Index] = player;
 
             player.Play();
@@ -201,7 +213,19 @@ namespace Echopad.Audio
             CleanupVbanOnly(idx);
             CleanupReaderOnly(idx);
         }
+        // =====================================================
+        // NEW: dB to linear gain
+        // =====================================================
+        private static float DbToLinear(float db)
+        {
+            // safety clamp (matches your UI)
+            db = Math.Clamp(db, -60f, 20f);
 
+            // 0 dB -> 1.0
+            // -6 dB -> ~0.501
+            // +6 dB -> ~1.995
+            return (float)Math.Pow(10.0, db / 20.0);
+        }
         // Used only to allow safe “-=” even if we didn’t attach this handler.
         private void Player_PlaybackStopped_NoOp(object? s, StoppedEventArgs e) { }
 

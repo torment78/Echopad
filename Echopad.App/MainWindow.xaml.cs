@@ -441,7 +441,8 @@ namespace Echopad.App
                     ps.ClipPath = pad.ClipPath;
                     ps.StartMs = pad.StartMs;
                     ps.EndMs = pad.EndMs;
-
+                    pad.GainDb = 0f;
+                    ps.GainDb = pad.GainDb;
                     // NOTE: do NOT wipe MIDI/hotkeys
                     _settingsService.Save(gs);
                     _profiles.SavePadsToProfile(gs, ActiveProfileIndex);
@@ -518,8 +519,8 @@ namespace Echopad.App
                 ps.ClipPath = dst.ClipPath;
                 ps.StartMs = dst.StartMs;
                 ps.EndMs = dst.EndMs;
+                ps.GainDb = dst.GainDb;
 
-               
 
                 _settingsService.Save(gs);
                 _profiles.SavePadsToProfile(gs, ActiveProfileIndex);
@@ -1330,7 +1331,7 @@ namespace Echopad.App
                 pad.PadName = ps.PadName;
                 pad.InputSource = ps.InputSource <= 0 ? 1 : ps.InputSource;
                 pad.PreviewToMonitor = ps.PreviewToMonitor;
-
+                pad.GainDb = ps.GainDb;
                 pad.IsDropFolderMode = ps.IsDropFolderMode;
                 pad.IsEchoMode = ps.IsEchoMode;
 
@@ -1712,7 +1713,8 @@ namespace Echopad.App
             ps.ClipPath = target.ClipPath;
             ps.StartMs = target.StartMs;
             ps.EndMs = target.EndMs;
-
+            target.GainDb = 0f;
+            ps.GainDb = target.GainDb;
             ps.IsDropFolderMode = true;
 
             _settingsService.Save(gs);
@@ -2238,9 +2240,8 @@ namespace Echopad.App
                 ps.StartMs = 0;
                 ps.EndMs = 0;
                 ps.PadName = null;
-                // KEEP THESE AS-IS (do not touch):
-                // ps.IsEchoMode
-                // ps.IsDropFolderMode
+                pad.GainDb = 0f;
+                ps.GainDb = 0f;
 
                 _settingsService.Save(gs);
                 _profiles.SavePadsToProfile(gs, ActiveProfileIndex);
@@ -2366,7 +2367,7 @@ namespace Echopad.App
             var ps = gs.GetOrCreatePad(pad.Index);
             ps.StartMs = pad.StartMs;
             ps.EndMs = pad.EndMs;
-
+            ps.GainDb = pad.GainDb;
             _settingsService.Save(gs);
             GlobalSettings = _settingsService.Load();
             _profiles.SavePadsToProfile(gs, ActiveProfileIndex);

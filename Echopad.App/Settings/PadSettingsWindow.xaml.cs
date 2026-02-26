@@ -12,7 +12,7 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;          // CompositionTarget.Rendering
 using System.Windows.Threading;
-
+using NAudio.Wave.SampleProviders;
 // ONLY for ColorDialog (avoid namespace collisions)
 using WF = System.Windows.Forms;
 
@@ -91,6 +91,8 @@ namespace Echopad.App.Settings
             };
 
             // Keep playhead inside when trim changes (TextBox edits etc.)
+            // Keep playhead inside when trim changes (TextBox edits etc.)
+            // + NEW: live preview gain updates
             _vm.PropertyChanged += (_, e) =>
             {
                 if (e.PropertyName == nameof(PadSettingsViewModel.StartMs) ||
@@ -101,6 +103,24 @@ namespace Echopad.App.Settings
                         ClampPlayheadIntoTrim();
                         UpdatePlayheadVisual(_previewPosMs);
                     }, DispatcherPriority.Background);
+
+                    return;
+                }
+
+                // NEW: live gain update while preview is playing
+                if (e.PropertyName == nameof(PadSettingsViewModel.GainDb))
+                {
+                    try
+                    {
+                        if (_previewGain != null)
+                        {
+                            float gainDb = Math.Clamp(_vm.GainDb, -60f, 20f);
+                            _previewGain.Volume = (float)Math.Pow(10.0, gainDb / 20.0);
+                        }
+                    }
+                    catch { }
+
+                    return;
                 }
             };
         }
@@ -719,7 +739,7 @@ namespace Echopad.App.Settings
         // =====================================================
         private IWavePlayer? _previewOut;
         private AudioFileReader? _previewReader;
-
+        private VolumeSampleProvider? _previewGain;
         // timer only for lightweight logic (not visual smoothness)
         private readonly DispatcherTimer _previewTimer = new() { Interval = TimeSpan.FromMilliseconds(60) };
         private bool _previewTimerWired = false;
@@ -820,14 +840,26 @@ namespace Echopad.App.Settings
 
             _previewReader!.CurrentTime = TimeSpan.FromMilliseconds(_previewPosMs);
 
-            var segment = new NAudio.Wave.SampleProviders.OffsetSampleProvider(_previewReader)
+            var segment = new OffsetSampleProvider(_previewReader)
             {
                 SkipOver = TimeSpan.Zero,
                 Take = TimeSpan.FromMilliseconds(takeMs)
             };
 
+            // =====================================================
+            // NEW: Apply per-pad gain to PREVIEW too (dB -> linear)
+            // and keep provider reference for live updates
+            // =====================================================
+            float gainDb = Math.Clamp(_vm.GainDb, -60f, 20f);
+            float linear = (float)Math.Pow(10.0, gainDb / 20.0);
+
+            _previewGain = new VolumeSampleProvider(segment)
+            {
+                Volume = linear
+            };
+
             RecreatePreviewOutAlways();
-            _previewOut!.Init(new NAudio.Wave.SampleProviders.SampleToWaveProvider(segment));
+            _previewOut!.Init(_previewGain.ToWaveProvider());
 
             // Start clock before Play() to avoid first-frame snap
             _previewClock.Reset();

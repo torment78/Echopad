@@ -10,7 +10,7 @@ namespace Echopad.Core
         public string? PadName { get; set; }
         public int StartMs { get; set; }
         public int EndMs { get; set; }
-
+        
         public int InputSource { get; set; } = 1;
         public bool PreviewToMonitor { get; set; } = false;
 
@@ -19,7 +19,7 @@ namespace Echopad.Core
 
         public string? PadHotkey { get; set; }
         public string? MidiTriggerDisplay { get; set; }
-
+        public float GainDb { get; set; } = 0f;
         // ============================
         // MIDI LED VALUES (0–127)
         // ============================
@@ -61,7 +61,7 @@ namespace Echopad.Core
                 MidiLedActiveEnabled = true,
                 MidiLedRunningEnabled = true,
                 MidiLedClearEnabled = true,
-
+                GainDb = 0f,
                 MidiLedActiveValue = 28,
                 MidiLedRunningValue = 5,
                 MidiLedClearValue = 0

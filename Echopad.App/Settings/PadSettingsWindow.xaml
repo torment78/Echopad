@@ -606,28 +606,49 @@ NEW: BindBoxStyle (read-only display box with Clear + Delete)
                 </Grid>
 
 
-                <!-- PAD NAME -->
-                <GroupBox Header="Pad Name"
-         Style="{StaticResource FlatGroupBoxNoBorder}"
-         Margin="0,0,0,8" Width="551">
-                    <Grid Margin="12">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="Auto"/>
-                        </Grid.ColumnDefinitions>
+                <!-- ===================================================== -->
+                <!-- PAD NAME + GAIN (INLINE) -->
+                <!-- ===================================================== -->
+                <Grid Margin="0,6,0,0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" MinWidth="88"/>
+                        <ColumnDefinition Width="414"/>
+                        <ColumnDefinition Width="69"/>
+                        <ColumnDefinition Width="Auto" MinWidth="84"/>
+                        <ColumnDefinition Width="325"/>
+                        <ColumnDefinition Width="88"/>
+                    </Grid.ColumnDefinitions>
 
-                        <TextBox Grid.Column="0"
-                 Text="{Binding PadName, UpdateSourceTrigger=PropertyChanged}"
-                 MaxLength="48"
-                 VerticalContentAlignment="Center"/>
+                    <!-- Pad Name -->
+                    <TextBlock Grid.Column="0"
+               Text="Pad name:"
+               Margin="0,7,8,7"/>
 
-                        <Button Grid.Column="1"
-                Margin="10,0,0,0"
-                Content="Clear"
-                Style="{StaticResource EchopadTopButtonStyle}"
-                Click="ClearPadName_Click"/>
-                    </Grid>
-                </GroupBox>
+                    <TextBox Grid.Column="1"
+             Text="{Binding PadName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+
+                    <!-- spacer -->
+                    <Border Grid.Column="2"/>
+
+                    <!-- Gain -->
+                    <TextBlock Grid.Column="3"
+               Text="Gain:"
+               Margin="0,7,8,7"/>
+
+                    <Slider Grid.Column="4"
+            Minimum="-60"
+            Maximum="20"
+            TickFrequency="1"
+            IsSnapToTickEnabled="False"
+            Value="{Binding GainDb, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Margin="0,6,0,5"/>
+
+                    <!-- Value box AFTER slider -->
+                    <TextBox Grid.Column="5"
+             Margin="8,0,0,0"
+             HorizontalContentAlignment="Center"
+             IsReadOnly="True"
+             Text="{Binding GainDb, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged, StringFormat={}{0:0.0}}"/>
+                </Grid>
 
 
             </StackPanel>

@@ -50,6 +50,11 @@ namespace Echopad.App.Settings
                     DurationText = FormatDuration(_pad.ClipDuration);
                 }
 
+                if (Math.Abs(_pad.GainDb - _padSettings.GainDb) > 0.001f)
+                {
+                    GainDb = _pad.GainDb;
+                }
+
                 Clamp();
             }
 
@@ -476,7 +481,7 @@ namespace Echopad.App.Settings
             ps.PadName = PadName;
             ps.InputSource = InputSource;
             ps.PreviewToMonitor = PreviewToMonitor;
-
+            ps.GainDb = GainDb;
             ps.PadHotkey = PadHotkey;
             ps.MidiTriggerDisplay = MidiTriggerRaw;
             ps.MidiLedActiveEnabled = MidiLedActiveEnabled;
@@ -500,7 +505,21 @@ namespace Echopad.App.Settings
 
             _settings.Save(_global);
         }
-
+        // ======================================================
+        // NEW: Gain (dB) -60..+20, 0 = unity
+        // ======================================================
+        private float _gainDb;
+        public float GainDb
+        {
+            get => _gainDb;
+            set
+            {
+                var v = Math.Clamp(value, -60f, 20f);
+                if (Math.Abs(_gainDb - v) < 0.001f) return;
+                _gainDb = v;
+                OnPropertyChanged();
+            }
+        }
         // =====================================================
         // INTERNAL
         // =====================================================
@@ -512,7 +531,7 @@ namespace Echopad.App.Settings
             PadName = ps.PadName;
             InputSource = ps.InputSource;
             PreviewToMonitor = ps.PreviewToMonitor;
-
+            GainDb = ps.GainDb;
             PadHotkey = ps.PadHotkey;
             MidiTriggerRaw = ps.MidiTriggerDisplay;
 
@@ -538,6 +557,7 @@ namespace Echopad.App.Settings
             _pad.EndMs = EndMs;
             _pad.InputSource = InputSource;
             _pad.PreviewToMonitor = PreviewToMonitor;
+            _pad.GainDb = GainDb;
             _pad.IsEchoMode = IsEchoMode;
             _pad.IsDropFolderMode = IsDropFolderMode;
             _pad.PadName = PadName;

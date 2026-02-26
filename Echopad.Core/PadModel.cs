@@ -86,7 +86,22 @@ namespace Echopad.Core
                 OnPropertyChanged();
             }
         }
-
+        // ======================================================
+        // NEW: Per-pad gain (dB)
+        // -60 .. +20, 0 = unity (original file level)
+        // ======================================================
+        private float _gainDb = 0f;
+        public float GainDb
+        {
+            get => _gainDb;
+            set
+            {
+                var v = Math.Clamp(value, -60f, 20f);
+                if (Math.Abs(_gainDb - v) < 0.001f) return;
+                _gainDb = v;
+                OnPropertyChanged();
+            }
+        }
         // ======================================================
         // Per-pad routing + preview
         // ======================================================
