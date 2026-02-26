@@ -9,6 +9,7 @@ using System.IO;
 using System.Reflection;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
 using System.Windows.Media;          // CompositionTarget.Rendering
 using System.Windows.Threading;
 
@@ -23,7 +24,7 @@ namespace Echopad.App.Settings
         private IDisposable? _profileSwitchLock;
         // Prevent double-learn / re-entrancy
         private bool _isLearningMidi;
-
+        private IDisposable? _uiBlock;
         // Preview routing (monitor out)
         private readonly GlobalSettings _previewGlobal;
 
@@ -39,6 +40,7 @@ namespace Echopad.App.Settings
 
             Loaded += (_, __) =>
             {
+                _uiBlock ??= Echopad.App.Services.UiInputBlocker.Acquire("PadSettingsWindow");
 
                 try
                 {
@@ -1059,7 +1061,8 @@ namespace Echopad.App.Settings
         {
             // NEW: one more safety stop in case window is closed via [X]
             StopPreviewBeforeClose();
-
+            try { _uiBlock?.Dispose(); } catch { }
+            _uiBlock = null;
             // =========================================================
             // NEW: Release profile-switch lock
             // =========================================================
@@ -1082,5 +1085,39 @@ namespace Echopad.App.Settings
 
             base.OnClosed(e);
         }
+
+        // =========================================================
+        // NEW: Clear binding helpers (MIDI/Hotkey display boxes)
+        // =========================================================
+        private void BindClearMenu_Clear_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is not MenuItem mi) return;
+            if (mi.Parent is not ContextMenu cm) return;
+            if (cm.PlacementTarget is not TextBox tb) return;
+
+            ClearBoundTextBox(tb);
+        }
+
+        private void BindBox_PreviewKeyDown(object sender, KeyEventArgs e)
+        {
+            if (sender is not TextBox tb) return;
+
+            // Delete / Backspace clears the value
+            if (e.Key == Key.Delete || e.Key == Key.Back)
+            {
+                ClearBoundTextBox(tb);
+                e.Handled = true;
+            }
+        }
+
+        private static void ClearBoundTextBox(TextBox tb)
+        {
+            // This will also push empty string into the bound VM property (TwoWay)
+            tb.Clear();
+
+            // Make sure binding source updates immediately (safe even if not needed)
+            tb.GetBindingExpression(TextBox.TextProperty)?.UpdateSource();
+        }
+
     }
 }

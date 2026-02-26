@@ -101,6 +101,32 @@
             <!-- slightly tighter default margin between sections -->
             <Setter Property="Margin" Value="0,0,0,8"/>
         </Style>
+        <!-- NEW: reusable "clear binding" menu for bind TextBoxes -->
+        <!-- =========================================================
+NEW: reusable "clear binding" menu for bind TextBoxes
+========================================================= -->
+        <ContextMenu x:Key="BindClearMenu">
+            <MenuItem Header="Clear"
+              Click="BindClearMenu_Clear_Click"/>
+        </ContextMenu>
+
+        <!-- =========================================================
+NEW: BindBoxStyle (read-only display box with Clear + Delete)
+========================================================= -->
+        <Style x:Key="BindBoxStyle"
+       TargetType="{x:Type TextBox}"
+       BasedOn="{StaticResource {x:Type TextBox}}">
+            <Setter Property="Height" Value="26"/>
+            <Setter Property="Padding" Value="6,0"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="IsReadOnly" Value="True"/>
+            <Setter Property="ContextMenu" Value="{StaticResource BindClearMenu}"/>
+            <Setter Property="ToolTip" Value="{Binding Text, RelativeSource={RelativeSource Self}}"/>
+
+            <!-- correct way to hook event from a Style -->
+            <EventSetter Event="PreviewKeyDown" Handler="BindBox_PreviewKeyDown"/>
+        </Style>
+
     </Window.Resources>
 
     <Grid Margin="16">
@@ -383,9 +409,9 @@
                                 </Grid.ColumnDefinitions>
 
                                 <TextBox Grid.Column="0"
-                          Text="{Binding MidiTriggerRaw, UpdateSourceTrigger=PropertyChanged}"
-                          IsReadOnly="True"
-                          Opacity="0.9"/>
+         Style="{StaticResource BindBoxStyle}"
+         Text="{Binding MidiTriggerRaw, UpdateSourceTrigger=PropertyChanged}"
+         Opacity="0.9"/>
 
                                 <Button Grid.Column="1"
                          Margin="8,0,0,0"
@@ -535,10 +561,11 @@
                                 <ColumnDefinition Width="Auto" MinWidth="129"/>
                             </Grid.ColumnDefinitions>
 
-                            <TextBlock Grid.Column="0"
-                   Text="{Binding PadHotkey}"
-                   Opacity="0.9"
-                   TextTrimming="CharacterEllipsis" Margin="0,32,0,32"/>
+                            <TextBox Grid.Column="0"
+         Style="{StaticResource BindBoxStyle}"
+         Text="{Binding PadHotkey}"
+         Margin="0,32,0,32"
+         Opacity="0.9"/>
 
                             <Button Grid.Column="1"
                 Margin="10,32,10,33"

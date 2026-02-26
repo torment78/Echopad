@@ -1,13 +1,18 @@
-﻿using System;
+﻿using Microsoft.Win32;
+using System;
 using System.ComponentModel; // NEW
 using System.IO;
+using System.Reflection;
 using System.Windows;
-using Microsoft.Win32;
+using System.Windows.Controls;
+using System.Windows.Input;
 
 namespace Echopad.App.Settings
 {
     public partial class SettingsWindow : Window
     {
+        private IDisposable? _uiBlock;
+
         private readonly SettingsViewModel _vm;
         private System.Windows.Threading.DispatcherTimer? _vuTimer;
 
@@ -20,16 +25,25 @@ namespace Echopad.App.Settings
             _vm = vm;
             DataContext = _vm;
 
+            // =====================================================
+            // NEW: Block MainWindow pad input while this window is open
+            // =====================================================
             Loaded += (_, __) =>
             {
+                _uiBlock ??= Echopad.App.Services.UiInputBlocker.Acquire("SettingsWindow");
+
                 StartVuTimer();
                 HookLiveApply(); // NEW
             };
 
             Closed += (_, __) =>
             {
-                StopVuTimer();
-                UnhookLiveApply(); // NEW
+                // Always unwind in reverse order
+                try { StopVuTimer(); } catch { }
+                try { UnhookLiveApply(); } catch { }
+
+                try { _uiBlock?.Dispose(); } catch { }
+                _uiBlock = null;
             };
         }
 
@@ -496,5 +510,65 @@ namespace Echopad.App.Settings
                 });
             }
         }
+
+        private void BindClearMenu_Clear_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is not MenuItem mi) return;
+
+            // ContextMenu.PlacementTarget points at the TextBox that was right-clicked
+            if (mi.Parent is not ContextMenu cm) return;
+            if (cm.PlacementTarget is not TextBox tb) return;
+
+            ClearBindingForTag(tb);
+        }
+
+        // -----------------------------------------------------------------
+        // NEW: Delete / Backspace clears (and keeps the box read-only)
+        // -----------------------------------------------------------------
+        private void BindBox_PreviewKeyDown(object sender, KeyEventArgs e)
+        {
+            if (sender is not TextBox tb) return;
+
+            if (e.Key == Key.Delete || e.Key == Key.Back)
+            {
+                ClearBindingForTag(tb);
+                e.Handled = true;
+            }
+        }
+
+        // -----------------------------------------------------------------
+        // NEW: Central clear helper
+        // - Tag must match a public settable property on your ViewModel
+        //   (ex: "MidiBindToggleEdit", "HotkeyOpenSettings", etc.)
+        // -----------------------------------------------------------------
+        private void ClearBindingForTag(TextBox tb)
+        {
+            var tag = tb.Tag as string;
+            if (string.IsNullOrWhiteSpace(tag)) return;
+
+            var vm = DataContext;
+            if (vm == null) return;
+
+            var prop = vm.GetType().GetProperty(tag, BindingFlags.Public | BindingFlags.Instance);
+            if (prop == null || !prop.CanWrite) return;
+
+            // Most of your binds are string; some might be nullables.
+            if (prop.PropertyType == typeof(string))
+            {
+                prop.SetValue(vm, string.Empty);
+            }
+            else if (Nullable.GetUnderlyingType(prop.PropertyType) != null)
+            {
+                prop.SetValue(vm, null);
+            }
+            else
+            {
+                // fallback: try empty string if assignable
+                if (prop.PropertyType.IsAssignableFrom(typeof(string)))
+                    prop.SetValue(vm, string.Empty);
+            }
+        }
+
+
     }
 }

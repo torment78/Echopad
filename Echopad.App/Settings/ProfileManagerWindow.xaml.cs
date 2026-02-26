@@ -2,6 +2,7 @@
 using System.Linq;
 using System.Text;
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Input;
 
 namespace Echopad.App.Settings
@@ -11,7 +12,8 @@ namespace Echopad.App.Settings
         private bool _isLearningHotkey;
         private bool _allowModifierOnly;
         private Action<string>? _hotkeyLearnCallback;
-
+        // NEW: block MainWindow pads while this window is open
+        private IDisposable? _uiBlock;
         public ProfileManagerWindow(ProfileManagerViewModel vm)
         {
             InitializeComponent();
@@ -19,6 +21,18 @@ namespace Echopad.App.Settings
 
             // Always hooked, gated by _isLearningHotkey
             PreviewKeyDown += ProfileManagerWindow_PreviewKeyDown;
+
+            // NEW: block MainWindow pad input while Profiles window is open
+            Loaded += (_, __) =>
+            {
+                _uiBlock ??= Echopad.App.Services.UiInputBlocker.Acquire("ProfileManagerWindow");
+            };
+
+            Closed += (_, __) =>
+            {
+                try { _uiBlock?.Dispose(); } catch { }
+                _uiBlock = null;
+            };
         }
 
         private void BtnClose_Click(object sender, RoutedEventArgs e)
@@ -162,6 +176,36 @@ namespace Echopad.App.Settings
 
             base.OnClosed(e);
         }
+
+        // =========================================================
+        // Clear binding helpers (MIDI/Hotkey boxes)
+        // =========================================================
+        private void BindClearMenu_Clear_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is not MenuItem mi) return;
+            if (mi.Parent is not ContextMenu cm) return;
+            if (cm.PlacementTarget is not TextBox tb) return;
+
+            ClearBoundTextBox(tb);
+        }
+
+        private void BindBox_PreviewKeyDown(object sender, KeyEventArgs e)
+        {
+            if (sender is not TextBox tb) return;
+
+            if (e.Key == Key.Delete || e.Key == Key.Back)
+            {
+                ClearBoundTextBox(tb);
+                e.Handled = true;
+            }
+        }
+
+        private static void ClearBoundTextBox(TextBox tb)
+        {
+            tb.Text = string.Empty;
+            tb.GetBindingExpression(TextBox.TextProperty)?.UpdateSource();
+        }
+
 
     }
 }

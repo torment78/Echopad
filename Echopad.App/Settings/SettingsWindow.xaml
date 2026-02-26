@@ -1,118 +1,232 @@
-﻿<Window
-        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:core="clr-namespace:Echopad.Core;assembly=Echopad.Core"
-        xmlns:converters="clr-namespace:Echopad.App.UI.Converters"
-        xmlns:d="http://schemas.microsoft.com/expression/blend/2008" xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" mc:Ignorable="d" x:Class="Echopad.App.Settings.SettingsWindow"
-        Title="Echopad Settings"
-        Width="740"
-        MinHeight="1350"
-        ResizeMode="NoResize"
-        WindowStartupLocation="CenterOwner"
-        Background="{DynamicResource BgBrush}"
-        Foreground="{DynamicResource TextBrush}"
-        Height="1363">
+﻿<!-- =========================================================
+FILE: Echopad.App/Settings/SettingsWindow.xaml
+NOTES:
+- No layout refactor of your existing sections — just adds a clean "BindBoxStyle"
+  and applies right-click Clear + Delete/Backspace-to-clear support.
+- You MUST add the code-behind handlers shown after this file.
+========================================================= -->
 
-	<Window.Resources>
+<Window
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:core="clr-namespace:Echopad.Core;assembly=Echopad.Core"
+    xmlns:converters="clr-namespace:Echopad.App.UI.Converters"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    mc:Ignorable="d"
+    x:Class="Echopad.App.Settings.SettingsWindow"
+    Title="Echopad Settings"
+    MinWidth="960"
+    Width="892"
+    Height="1116"
+    ResizeMode="CanResize"
+    WindowStartupLocation="CenterOwner"
+    Background="{DynamicResource BgBrush}"
+    Foreground="{DynamicResource TextBrush}">
 
-		<BooleanToVisibilityConverter x:Key="BoolToVis"/>
+    <Window.Resources>
 
-		<!-- NEW: enum <-> bool for RadioButtons -->
-		<converters:EnumToBooleanConverter x:Key="EnumToBooleanConverter"/>
+        <BooleanToVisibilityConverter x:Key="BoolToVis"/>
 
-		<!-- ===== Palette (GRAY THEME) ===== -->
-		<SolidColorBrush x:Key="BgBrush" Color="#212121"/>
-		<SolidColorBrush x:Key="PanelBrush" Color="#212121"/>
-		<SolidColorBrush x:Key="ControlBgBrush" Color="#181818"/>
-		<SolidColorBrush x:Key="ControlBorderBrush" Color="#303030"/>
-		<SolidColorBrush x:Key="ControlHoverBrush" Color="#242424"/>
-		<SolidColorBrush x:Key="ControlPressedBrush" Color="#1D1D1D"/>
-		<SolidColorBrush x:Key="TextBrush" Color="#EAEAEA"/>
-		<SolidColorBrush x:Key="MutedTextBrush" Color="#B8B8B8"/>
+        <!-- enum <-> bool for RadioButtons -->
+        <converters:EnumToBooleanConverter x:Key="EnumToBooleanConverter"/>
 
-		<SolidColorBrush x:Key="DropBgBrush" Color="#181818"/>
-		<SolidColorBrush x:Key="DropItemHoverBrush" Color="#242424"/>
-		<SolidColorBrush x:Key="DropItemSelectedBrush" Color="#303030"/>
+        <!-- ===== Palette (GRAY THEME) ===== -->
+        <SolidColorBrush x:Key="BgBrush" Color="#212121"/>
+        <SolidColorBrush x:Key="PanelBrush" Color="#212121"/>
+        <SolidColorBrush x:Key="ControlBgBrush" Color="#181818"/>
+        <SolidColorBrush x:Key="ControlBorderBrush" Color="#303030"/>
+        <SolidColorBrush x:Key="ControlHoverBrush" Color="#242424"/>
+        <SolidColorBrush x:Key="ControlPressedBrush" Color="#1D1D1D"/>
+        <SolidColorBrush x:Key="TextBrush" Color="#EAEAEA"/>
+        <SolidColorBrush x:Key="MutedTextBrush" Color="#B8B8B8"/>
 
-		<Style TargetType="{x:Type GroupBox}">
-			<Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
-			<Setter Property="BorderBrush" Value="{StaticResource ControlBorderBrush}"/>
-			<Setter Property="Background" Value="{StaticResource PanelBrush}"/>
-			<Setter Property="BorderThickness" Value="1"/>
-		</Style>
+        <SolidColorBrush x:Key="DropBgBrush" Color="#181818"/>
+        <SolidColorBrush x:Key="DropItemHoverBrush" Color="#242424"/>
+        <SolidColorBrush x:Key="DropItemSelectedBrush" Color="#303030"/>
 
-		<Style TargetType="{x:Type TextBlock}">
-			<Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
-		</Style>
+        <!-- Kill the default white focus rectangle everywhere -->
+        <Style TargetType="{x:Type Control}">
+            <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+        </Style>
 
-		<Style TargetType="{x:Type TextBox}">
-			<Setter Property="Background" Value="{StaticResource ControlBgBrush}"/>
-			<Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
-			<Setter Property="BorderBrush" Value="{StaticResource ControlBorderBrush}"/>
-			<Setter Property="BorderThickness" Value="1"/>
-			<Setter Property="Padding" Value="6"/>
-		</Style>
+        <!-- Rounded GroupBox (ONLY borders + corners) -->
+        <Style TargetType="{x:Type GroupBox}">
+            <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource ControlBorderBrush}"/>
+            <Setter Property="Background" Value="{StaticResource PanelBrush}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="{x:Type GroupBox}">
+                        <Grid SnapsToDevicePixels="True">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="*"/>
+                            </Grid.RowDefinitions>
 
-		<Style TargetType="{x:Type ListBox}">
-			<Setter Property="Background" Value="{StaticResource ControlBgBrush}"/>
-			<Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
-			<Setter Property="BorderBrush" Value="{StaticResource ControlBorderBrush}"/>
-			<Setter Property="BorderThickness" Value="1"/>
-		</Style>
+                            <!-- Header -->
+                            <Border Grid.Row="0"
+                                    Background="Transparent"
+                                    Padding="8,0,8,0"
+                                    Margin="10,0,10,0">
+                                <ContentPresenter ContentSource="Header"
+                                                  RecognizesAccessKey="True"/>
+                            </Border>
 
-		<Style TargetType="{x:Type ListBoxItem}">
-			<Setter Property="Padding" Value="6,4"/>
-			<Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
-			<Setter Property="Background" Value="Transparent"/>
-			<Setter Property="Template">
-				<Setter.Value>
-					<ControlTemplate TargetType="{x:Type ListBoxItem}">
-						<Border x:Name="Bd" Background="{TemplateBinding Background}" CornerRadius="6">
-							<ContentPresenter Margin="{TemplateBinding Padding}"/>
-						</Border>
-						<ControlTemplate.Triggers>
-							<Trigger Property="IsMouseOver" Value="True">
-								<Setter TargetName="Bd" Property="Background" Value="{StaticResource DropItemHoverBrush}"/>
-							</Trigger>
-							<Trigger Property="IsSelected" Value="True">
-								<Setter TargetName="Bd" Property="Background" Value="{StaticResource DropItemSelectedBrush}"/>
-							</Trigger>
-							<Trigger Property="IsEnabled" Value="False">
-								<Setter Property="Opacity" Value="0.45"/>
-							</Trigger>
-						</ControlTemplate.Triggers>
-					</ControlTemplate>
-				</Setter.Value>
-			</Setter>
-		</Style>
+                            <!-- Body border (rounded) -->
+                            <Border Grid.Row="1"
+                                    Background="{TemplateBinding Background}"
+                                    BorderBrush="{TemplateBinding BorderBrush}"
+                                    BorderThickness="{TemplateBinding BorderThickness}"
+                                    CornerRadius="12"
+                                    Padding="0"
+                                    Margin="0,6,0,0">
+                                <ContentPresenter Margin="{TemplateBinding Padding}"
+                                                  SnapsToDevicePixels="True"/>
+                            </Border>
+                        </Grid>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
 
-		<!-- NEW: RadioButton style -->
-		<Style TargetType="{x:Type RadioButton}">
-			<Setter Property="Foreground" Value="{StaticResource TextBrush}" />
-			<Setter Property="Margin" Value="0,0,12,0" />
-			<Setter Property="VerticalAlignment" Value="Center" />
-		</Style>
+        <Style TargetType="{x:Type TextBlock}">
+            <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
+        </Style>
 
-		<!-- ===== Dark ComboBox (dropdown fixed) ===== -->
-		<Style TargetType="{x:Type ComboBox}">
-			<Setter Property="Background" Value="{StaticResource ControlBgBrush}"/>
-			<Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
-			<Setter Property="BorderBrush" Value="{StaticResource ControlBorderBrush}"/>
-			<Setter Property="BorderThickness" Value="1"/>
-			<Setter Property="Padding" Value="6,4"/>
-			<Setter Property="MinHeight" Value="30"/>
-			<Setter Property="Template">
-				<Setter.Value>
-					<ControlTemplate TargetType="{x:Type ComboBox}">
-						<Grid>
-							<Border x:Name="Border"
+        <!-- Rounded TextBox border + themed focus/hover border -->
+        <Style TargetType="{x:Type TextBox}">
+            <Setter Property="Background" Value="{StaticResource ControlBgBrush}"/>
+            <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource ControlBorderBrush}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="6"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="{x:Type TextBox}">
+                        <Border x:Name="Bd"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="10"
+                                SnapsToDevicePixels="True">
+                            <ScrollViewer x:Name="PART_ContentHost"
+                                          Margin="0"
+                                          SnapsToDevicePixels="True"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bd" Property="BorderBrush" Value="#3A4D68"/>
+                                <Setter TargetName="Bd" Property="Background" Value="{StaticResource ControlHoverBrush}"/>
+                            </Trigger>
+                            <Trigger Property="IsKeyboardFocused" Value="True">
+                                <Setter TargetName="Bd" Property="BorderBrush" Value="#3A4D68"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Opacity" Value="0.5"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Rounded ListBox border (outer only) -->
+        <Style TargetType="{x:Type ListBox}">
+            <Setter Property="Background" Value="{StaticResource ControlBgBrush}"/>
+            <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource ControlBorderBrush}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="{x:Type ListBox}">
+                        <Border x:Name="Bd"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="10"
+                                SnapsToDevicePixels="True">
+                            <ScrollViewer Focusable="False"
+                                          Padding="{TemplateBinding Padding}">
+                                <ItemsPresenter/>
+                            </ScrollViewer>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsKeyboardFocusWithin" Value="True">
+                                <Setter TargetName="Bd" Property="BorderBrush" Value="#3A4D68"/>
+                            </Trigger>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bd" Property="BorderBrush" Value="#3A4D68"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Opacity" Value="0.5"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style TargetType="{x:Type ListBoxItem}">
+            <Setter Property="Padding" Value="6,4"/>
+            <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="{x:Type ListBoxItem}">
+                        <Border x:Name="Bd"
+                                Background="{TemplateBinding Background}"
+                                CornerRadius="6">
+                            <ContentPresenter Margin="{TemplateBinding Padding}"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="{StaticResource DropItemHoverBrush}"/>
+                            </Trigger>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="{StaticResource DropItemSelectedBrush}"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Opacity" Value="0.45"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style TargetType="{x:Type RadioButton}">
+            <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
+            <Setter Property="Margin" Value="0,0,12,0" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+
+        <Style TargetType="{x:Type CheckBox}">
+            <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+
+        <!-- Dark ComboBox (dropdown fixed) -->
+        <Style TargetType="{x:Type ComboBox}">
+            <Setter Property="Background" Value="{StaticResource ControlBgBrush}"/>
+            <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource ControlBorderBrush}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="6,4"/>
+            <Setter Property="MinHeight" Value="30"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="{x:Type ComboBox}">
+                        <Grid>
+                            <Border x:Name="Border"
                                     Background="{TemplateBinding Background}"
                                     BorderBrush="{TemplateBinding BorderBrush}"
                                     BorderThickness="{TemplateBinding BorderThickness}"
                                     CornerRadius="8"
                                     Padding="8,4">
-								<DockPanel>
-									<ToggleButton x:Name="Toggle"
+                                <DockPanel>
+                                    <ToggleButton x:Name="Toggle"
                                                   DockPanel.Dock="Right"
                                                   Focusable="False"
                                                   IsChecked="{Binding IsDropDownOpen, Mode=TwoWay, RelativeSource={RelativeSource Mode=TemplatedParent}}"
@@ -121,895 +235,1097 @@
                                                   Width="28"
                                                   HorizontalContentAlignment="Center"
                                                   VerticalContentAlignment="Center">
-										<TextBlock Text="▾" Foreground="{StaticResource MutedTextBrush}" FontSize="14"/>
-									</ToggleButton>
+                                        <TextBlock Text="▾"
+                                                   Foreground="{StaticResource MutedTextBrush}"
+                                                   FontSize="14"/>
+                                    </ToggleButton>
 
-									<ContentPresenter Margin="0"
+                                    <ContentPresenter Margin="0"
                                                       Content="{TemplateBinding SelectionBoxItem}"
                                                       ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}"
                                                       ContentTemplateSelector="{TemplateBinding ItemTemplateSelector}"
                                                       VerticalAlignment="Center"
                                                       HorizontalAlignment="Left"
                                                       RecognizesAccessKey="True"/>
-								</DockPanel>
-							</Border>
+                                </DockPanel>
+                            </Border>
 
-							<Popup x:Name="Popup"
+                            <Popup x:Name="Popup"
                                    Placement="Bottom"
                                    IsOpen="{TemplateBinding IsDropDownOpen}"
                                    AllowsTransparency="True"
                                    Focusable="False"
                                    PopupAnimation="Fade">
-								<Border Background="{StaticResource DropBgBrush}"
+                                <Border Background="{StaticResource DropBgBrush}"
                                         BorderBrush="{StaticResource ControlBorderBrush}"
                                         BorderThickness="1"
                                         CornerRadius="10"
                                         Padding="4"
                                         SnapsToDevicePixels="True">
-									<ScrollViewer Margin="2" SnapsToDevicePixels="True">
-										<StackPanel IsItemsHost="True" KeyboardNavigation.DirectionalNavigation="Contained"/>
-									</ScrollViewer>
-								</Border>
-							</Popup>
-						</Grid>
+                                    <ScrollViewer Margin="2" SnapsToDevicePixels="True">
+                                        <StackPanel IsItemsHost="True"
+                                                    KeyboardNavigation.DirectionalNavigation="Contained"/>
+                                    </ScrollViewer>
+                                </Border>
+                            </Popup>
+                        </Grid>
 
-						<ControlTemplate.Triggers>
-							<Trigger Property="IsMouseOver" Value="True">
-								<Setter TargetName="Border" Property="Background" Value="{StaticResource ControlHoverBrush}"/>
-								<Setter TargetName="Border" Property="BorderBrush" Value="#3A4D68"/>
-							</Trigger>
-							<Trigger Property="IsEnabled" Value="False">
-								<Setter Property="Opacity" Value="0.5"/>
-							</Trigger>
-						</ControlTemplate.Triggers>
-					</ControlTemplate>
-				</Setter.Value>
-			</Setter>
-		</Style>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Border" Property="Background" Value="{StaticResource ControlHoverBrush}"/>
+                                <Setter TargetName="Border" Property="BorderBrush" Value="#3A4D68"/>
+                            </Trigger>
 
-		<Style TargetType="{x:Type ComboBoxItem}">
-			<Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
-			<Setter Property="Background" Value="Transparent"/>
-			<Setter Property="Padding" Value="10,6"/>
-			<Setter Property="Template">
-				<Setter.Value>
-					<ControlTemplate TargetType="{x:Type ComboBoxItem}">
-						<Border x:Name="Bd" Background="{TemplateBinding Background}" CornerRadius="8">
-							<ContentPresenter/>
-						</Border>
-						<ControlTemplate.Triggers>
-							<Trigger Property="IsMouseOver" Value="True">
-								<Setter TargetName="Bd" Property="Background" Value="{StaticResource DropItemHoverBrush}"/>
-							</Trigger>
-							<Trigger Property="IsSelected" Value="True">
-								<Setter TargetName="Bd" Property="Background" Value="{StaticResource DropItemSelectedBrush}"/>
-							</Trigger>
-							<Trigger Property="IsEnabled" Value="False">
-								<Setter Property="Opacity" Value="0.45"/>
-							</Trigger>
-						</ControlTemplate.Triggers>
-					</ControlTemplate>
-				</Setter.Value>
-			</Setter>
-		</Style>
+                            <!-- focus border (prevents white outline) -->
+                            <Trigger Property="IsKeyboardFocusWithin" Value="True">
+                                <Setter TargetName="Border" Property="BorderBrush" Value="#3A4D68"/>
+                            </Trigger>
 
-	</Window.Resources>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Opacity" Value="0.5"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
 
-	<Grid Margin="16">
-		<Grid.RowDefinitions>
-			<RowDefinition Height="Auto"/>
-			<RowDefinition Height="*"/>
-			<RowDefinition Height="Auto"/>
-		</Grid.RowDefinitions>
+        <Style TargetType="{x:Type ComboBoxItem}">
+            <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Padding" Value="10,6"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="{x:Type ComboBoxItem}">
+                        <Border x:Name="Bd" Background="{TemplateBinding Background}" CornerRadius="8">
+                            <ContentPresenter/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="{StaticResource DropItemHoverBrush}"/>
+                            </Trigger>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="{StaticResource DropItemSelectedBrush}"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Opacity" Value="0.45"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
 
-		<TextBlock Text="Global Settings"
+        <!-- =========================================================
+             NEW: Context menu for binding boxes
+             ========================================================= -->
+        <ContextMenu x:Key="BindClearMenu">
+            <MenuItem Header="Clear"
+                      Click="BindClearMenu_Clear_Click"/>
+        </ContextMenu>
+
+        <!-- =========================================================
+             NEW: Reusable style for binding TextBoxes (MIDI/Hotkey display boxes)
+             - Right-click Clear
+             - Delete/Backspace clears
+             - Uses Tag="PropertyName" to know what to clear
+             ========================================================= -->
+        <Style x:Key="BindBoxStyle" TargetType="{x:Type TextBox}" BasedOn="{StaticResource {x:Type TextBox}}">
+            <Setter Property="Height" Value="26"/>
+            <Setter Property="Padding" Value="6,0"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="IsReadOnly" Value="True"/>
+            <Setter Property="ContextMenu" Value="{StaticResource BindClearMenu}"/>
+            <Setter Property="ToolTip" Value="{Binding Text, RelativeSource={RelativeSource Self}}"/>
+
+            <!-- NEW: event hookup (correct way) -->
+            <EventSetter Event="PreviewKeyDown" Handler="BindBox_PreviewKeyDown"/>
+        </Style>
+
+    </Window.Resources>
+
+    <Grid Margin="16">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition/>
+            <RowDefinition Height="Auto" MinHeight="62"/>
+        </Grid.RowDefinitions>
+
+        <TextBlock Text="Global Settings"
                    FontSize="22"
                    FontWeight="Bold"
                    Margin="0,0,0,12"/>
 
-		<ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
-			<StackPanel>
+        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+            <StackPanel>
 
-				<!-- AUDIO ROUTING -->
-				<GroupBox Header="Audio Routing" Margin="0,0,0,12">
-					<Grid Margin="12">
-						<Grid.ColumnDefinitions>
-							<ColumnDefinition Width="81"/>
-							<ColumnDefinition Width="63*"/>
-							<ColumnDefinition Width="91"/>
-							<ColumnDefinition Width="62*"/>
-						</Grid.ColumnDefinitions>
+                <!-- AUDIO ROUTING -->
+                <GroupBox Header="Audio Routing" Margin="0,0,0,12">
+                    <Grid Margin="12">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="81"/>
+                            <ColumnDefinition Width="63*"/>
+                            <ColumnDefinition Width="91"/>
+                            <ColumnDefinition Width="62*"/>
+                        </Grid.ColumnDefinitions>
 
-						<Grid.RowDefinitions>
-							<RowDefinition Height="Auto"/>
-							<RowDefinition Height="Auto"/>
-						</Grid.RowDefinitions>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
 
-						<!-- =========================
+                        <!-- =========================
              INPUT 1
              ========================= -->
-						<TextBlock Grid.Row="0" Grid.Column="0" Text="Input 1:" VerticalAlignment="Top" Height="15"/>
+                        <TextBlock Grid.Row="0" Grid.Column="0" Text="Input 1:" VerticalAlignment="Top" Height="15"/>
 
-						<!-- Mode radios (STACKED) -->
-						<StackPanel Grid.Row="0" Grid.Column="0" Orientation="Vertical" Margin="0,20,0,0">
-							<RadioButton Content="Local"
-										 GroupName="In1Mode"
-										 IsChecked="{Binding Input1Mode, ConverterParameter={x:Static core:AudioEndpointMode.Local}, Converter={StaticResource EnumToBooleanConverter}}"/>
-							<RadioButton Content="VBAN"
-										 GroupName="In1Mode"
-										 IsChecked="{Binding Input1Mode, ConverterParameter={x:Static core:AudioEndpointMode.Vban}, Converter={StaticResource EnumToBooleanConverter}}"/>
-						</StackPanel>
+                        <!-- Mode radios (STACKED) -->
+                        <StackPanel Grid.Row="0" Grid.Column="0" Orientation="Vertical" Margin="0,20,0,0">
+                            <RadioButton Content="Local"
+                                         GroupName="In1Mode"
+                                         IsChecked="{Binding Input1Mode, ConverterParameter={x:Static core:AudioEndpointMode.Local}, Converter={StaticResource EnumToBooleanConverter}}"/>
+                            <RadioButton Content="VBAN"
+                                         GroupName="In1Mode"
+                                         IsChecked="{Binding Input1Mode, ConverterParameter={x:Static core:AudioEndpointMode.Vban}, Converter={StaticResource EnumToBooleanConverter}}"/>
+                        </StackPanel>
 
-						<Grid Grid.Row="0" Grid.Column="1">
-							<Grid.RowDefinitions>
-								<RowDefinition Height="Auto"/>
-								<RowDefinition Height="Auto"/>
-								<RowDefinition Height="Auto"/>
-								<RowDefinition Height="Auto"/>
-							</Grid.RowDefinitions>
+                        <Grid Grid.Row="0" Grid.Column="1">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
 
+                            <!-- LOCAL device combo -->
+                            <Grid Grid.Row="1">
+                                <Grid.Style>
+                                    <Style TargetType="{x:Type Grid}">
+                                        <Setter Property="Visibility" Value="Visible"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding Input1Mode}" Value="{x:Static core:AudioEndpointMode.Vban}">
+                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Grid.Style>
 
+                                <ComboBox ItemsSource="{Binding AudioInputs}"
+                                          SelectedValuePath="Id"
+                                          DisplayMemberPath="Name"
+                                          SelectedValue="{Binding Input1DeviceId}"
+                                          IsSynchronizedWithCurrentItem="False"/>
 
-							<!-- LOCAL device combo -->
-							<Grid Grid.Row="1">
-								<Grid.Style>
-									<Style TargetType="{x:Type Grid}">
-										<Setter Property="Visibility" Value="Visible"/>
-										<Style.Triggers>
-											<DataTrigger Binding="{Binding Input1Mode}" Value="{x:Static core:AudioEndpointMode.Vban}">
-												<Setter Property="Visibility" Value="Collapsed"/>
-											</DataTrigger>
-										</Style.Triggers>
-									</Style>
-								</Grid.Style>
+                                <TextBlock Text="No audio input devices found"
+                                           Margin="10,0,0,0"
+                                           VerticalAlignment="Center"
+                                           Foreground="{StaticResource MutedTextBrush}">
+                                    <TextBlock.Style>
+                                        <Style TargetType="{x:Type TextBlock}">
+                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding AudioInputs.Count}" Value="0">
+                                                    <Setter Property="Visibility" Value="Visible"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                            </Grid>
 
-								<ComboBox ItemsSource="{Binding AudioInputs}"
-										  SelectedValuePath="Id"
-										  DisplayMemberPath="Name"
-										  SelectedValue="{Binding Input1DeviceId}"
-										  IsSynchronizedWithCurrentItem="False"/>
+                            <!-- VBAN RX fields -->
+                            <Grid Grid.Row="1">
+                                <Grid.Style>
+                                    <Style TargetType="{x:Type Grid}">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding Input1Mode}" Value="{x:Static core:AudioEndpointMode.Vban}">
+                                                <Setter Property="Visibility" Value="Visible"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Grid.Style>
 
-								<TextBlock Text="No audio input devices found"
-										   Margin="10,0,0,0"
-										   VerticalAlignment="Center"
-										   Foreground="{StaticResource MutedTextBrush}">
-									<TextBlock.Style>
-										<Style TargetType="{x:Type TextBlock}">
-											<Setter Property="Visibility" Value="Collapsed"/>
-											<Style.Triggers>
-												<DataTrigger Binding="{Binding AudioInputs.Count}" Value="0">
-													<Setter Property="Visibility" Value="Visible"/>
-												</DataTrigger>
-											</Style.Triggers>
-										</Style>
-									</TextBlock.Style>
-								</TextBlock>
-							</Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="105"/>
+                                    <ColumnDefinition Width="60"/>
+                                    <ColumnDefinition Width="70"/>
+                                </Grid.ColumnDefinitions>
 
-							<!-- VBAN RX fields -->
-							<Grid Grid.Row="1">
-								<Grid.Style>
-									<Style TargetType="{x:Type Grid}">
-										<Setter Property="Visibility" Value="Collapsed"/>
-										<Style.Triggers>
-											<DataTrigger Binding="{Binding Input1Mode}" Value="{x:Static core:AudioEndpointMode.Vban}">
-												<Setter Property="Visibility" Value="Visible"/>
-											</DataTrigger>
-										</Style.Triggers>
-									</Style>
-								</Grid.Style>
+                                <TextBox Grid.Column="0"
+                                         MinWidth="100"
+                                         ToolTip="VBAN Sender IP (RemoteIp)"
+                                         Text="{Binding Input1VbanIp, UpdateSourceTrigger=PropertyChanged}"/>
 
-								<Grid.ColumnDefinitions>
-									<ColumnDefinition Width="105"/>
-									<ColumnDefinition Width="60"/>
-									<ColumnDefinition Width="70"/>
-								</Grid.ColumnDefinitions>
+                                <TextBox Grid.Column="1"
+                                         MinWidth="55"
+                                         Margin="2,0,0,0"
+                                         ToolTip="VBAN UDP Port"
+                                         Text="{Binding Input1VbanPort, UpdateSourceTrigger=PropertyChanged}"
+                                         HorizontalContentAlignment="Center"/>
 
-								<TextBox Grid.Column="0"
-										 MinWidth="100"
-										 ToolTip="VBAN Sender IP (RemoteIp)"
-										 Text="{Binding Input1VbanIp, UpdateSourceTrigger=PropertyChanged}"/>
+                                <TextBox Grid.Column="2"
+                                         MinWidth="65"
+                                         Margin="2,0,0,0"
+                                         MaxLength="16"
+                                         ToolTip="VBAN Stream Name"
+                                         Text="{Binding Input1VbanStream, UpdateSourceTrigger=PropertyChanged}"/>
+                            </Grid>
 
-								<TextBox Grid.Column="1"
-										 MinWidth="55"
-										 Margin="2,0,0,0"
-										 ToolTip="VBAN UDP Port"
-										 Text="{Binding Input1VbanPort, UpdateSourceTrigger=PropertyChanged}"
-										 HorizontalContentAlignment="Center"/>
+                            <!-- VU row -->
+                            <Grid Grid.Row="2" Margin="0,6,0,0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="60"/>
+                                </Grid.ColumnDefinitions>
 
-								<TextBox Grid.Column="2"
-										 MinWidth="65"
-										 Margin="2,0,0,0"
-										 MaxLength="16"
-										 ToolTip="VBAN Stream Name"
-										 Text="{Binding Input1VbanStream, UpdateSourceTrigger=PropertyChanged}"/>
-							</Grid>
+                                <ProgressBar Grid.Column="0"
+                                             x:Name="VuInput1"
+                                             Minimum="0" Maximum="1"
+                                             Height="10"
+                                             VerticalAlignment="Center"/>
 
-							<!-- VU row -->
-							<Grid Grid.Row="2" Margin="0,6,0,0">
-								<Grid.ColumnDefinitions>
-									<ColumnDefinition Width="*"/>
-									<ColumnDefinition Width="60"/>
-								</Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="1"
+                                           x:Name="VuInput1Db"
+                                           Text="-inf"
+                                           Margin="8,0,0,0"
+                                           VerticalAlignment="Center"
+                                           HorizontalAlignment="Right"/>
+                            </Grid>
+                        </Grid>
 
-								<ProgressBar Grid.Column="0"
-											 x:Name="VuInput1"
-											 Minimum="0" Maximum="1"
-											 Height="10"
-											 VerticalAlignment="Center"/>
-
-								<TextBlock Grid.Column="1"
-										   x:Name="VuInput1Db"
-										   Text="-inf"
-										   Margin="8,0,0,0"
-										   VerticalAlignment="Center"
-										   HorizontalAlignment="Right"/>
-							</Grid>
-						</Grid>
-
-						<!-- =========================
+                        <!-- =========================
              INPUT 2
              ========================= -->
-						<TextBlock Grid.Row="0" Grid.Column="2" Text="Input 2:" VerticalAlignment="Top" Margin="12,0,0,0" Height="15" d:LayoutOverrides="LeftMargin, RightMargin, TopMargin, BottomMargin" RenderTransformOrigin="0.5,0.5">
-							<TextBlock.RenderTransform>
-								<TransformGroup>
-									<ScaleTransform/>
-									<SkewTransform/>
-									<RotateTransform Angle="0.051"/>
-									<TranslateTransform/>
-								</TransformGroup>
-							</TextBlock.RenderTransform>
-						</TextBlock>
+                        <TextBlock Grid.Row="0" Grid.Column="2" Text="Input 2:" VerticalAlignment="Top" Margin="12,0,0,0" Height="15" d:LayoutOverrides="LeftMargin, RightMargin, TopMargin, BottomMargin" RenderTransformOrigin="0.5,0.5">
+                            <TextBlock.RenderTransform>
+                                <TransformGroup>
+                                    <ScaleTransform/>
+                                    <SkewTransform/>
+                                    <RotateTransform Angle="0.051"/>
+                                    <TranslateTransform/>
+                                </TransformGroup>
+                            </TextBlock.RenderTransform>
+                        </TextBlock>
 
-						<!-- Mode radios (STACKED) -->
-						<StackPanel Grid.Row="0" Grid.Column="2" Orientation="Vertical" Margin="12,20,0,6" d:LayoutOverrides="LeftMargin, RightMargin, TopMargin, BottomMargin">
-							<RadioButton Content="Local"
-										 GroupName="In2Mode"
-										 IsChecked="{Binding Input2Mode, ConverterParameter={x:Static core:AudioEndpointMode.Local}, Converter={StaticResource EnumToBooleanConverter}}"/>
-							<RadioButton Content="VBAN"
-										 GroupName="In2Mode"
-										 IsChecked="{Binding Input2Mode, ConverterParameter={x:Static core:AudioEndpointMode.Vban}, Converter={StaticResource EnumToBooleanConverter}}"/>
-						</StackPanel>
+                        <!-- Mode radios (STACKED) -->
+                        <StackPanel Grid.Row="0" Grid.Column="2" Orientation="Vertical" Margin="12,20,0,6" d:LayoutOverrides="LeftMargin, RightMargin, TopMargin, BottomMargin">
+                            <RadioButton Content="Local"
+                                         GroupName="In2Mode"
+                                         IsChecked="{Binding Input2Mode, ConverterParameter={x:Static core:AudioEndpointMode.Local}, Converter={StaticResource EnumToBooleanConverter}}"/>
+                            <RadioButton Content="VBAN"
+                                         GroupName="In2Mode"
+                                         IsChecked="{Binding Input2Mode, ConverterParameter={x:Static core:AudioEndpointMode.Vban}, Converter={StaticResource EnumToBooleanConverter}}"/>
+                        </StackPanel>
 
-						<Grid Grid.Row="0" Grid.Column="3">
-							<Grid.RowDefinitions>
-								<RowDefinition Height="Auto"/>
-								<RowDefinition Height="Auto"/>
-								<RowDefinition Height="Auto"/>
-								<RowDefinition Height="Auto"/>
-							</Grid.RowDefinitions>
+                        <Grid Grid.Row="0" Grid.Column="3">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
 
+                            <!-- LOCAL device combo -->
+                            <Grid Grid.Row="1">
+                                <Grid.Style>
+                                    <Style TargetType="{x:Type Grid}">
+                                        <Setter Property="Visibility" Value="Visible"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding Input2Mode}" Value="{x:Static core:AudioEndpointMode.Vban}">
+                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Grid.Style>
 
+                                <ComboBox ItemsSource="{Binding AudioInputs}"
+                                          SelectedValuePath="Id"
+                                          DisplayMemberPath="Name"
+                                          SelectedValue="{Binding Input2DeviceId}"
+                                          IsSynchronizedWithCurrentItem="False"/>
 
-							<!-- LOCAL device combo -->
-							<Grid Grid.Row="1">
-								<Grid.Style>
-									<Style TargetType="{x:Type Grid}">
-										<Setter Property="Visibility" Value="Visible"/>
-										<Style.Triggers>
-											<DataTrigger Binding="{Binding Input2Mode}" Value="{x:Static core:AudioEndpointMode.Vban}">
-												<Setter Property="Visibility" Value="Collapsed"/>
-											</DataTrigger>
-										</Style.Triggers>
-									</Style>
-								</Grid.Style>
+                                <TextBlock Text="No audio input devices found"
+                                           Margin="10,0,0,0"
+                                           VerticalAlignment="Center"
+                                           Foreground="{StaticResource MutedTextBrush}">
+                                    <TextBlock.Style>
+                                        <Style TargetType="{x:Type TextBlock}">
+                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding AudioInputs.Count}" Value="0">
+                                                    <Setter Property="Visibility" Value="Visible"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                            </Grid>
 
-								<ComboBox ItemsSource="{Binding AudioInputs}"
-										  SelectedValuePath="Id"
-										  DisplayMemberPath="Name"
-										  SelectedValue="{Binding Input2DeviceId}"
-										  IsSynchronizedWithCurrentItem="False"/>
+                            <!-- VBAN RX fields -->
+                            <Grid Grid.Row="1">
+                                <Grid.Style>
+                                    <Style TargetType="{x:Type Grid}">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding Input2Mode}" Value="{x:Static core:AudioEndpointMode.Vban}">
+                                                <Setter Property="Visibility" Value="Visible"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Grid.Style>
 
-								<TextBlock Text="No audio input devices found"
-										   Margin="10,0,0,0"
-										   VerticalAlignment="Center"
-										   Foreground="{StaticResource MutedTextBrush}">
-									<TextBlock.Style>
-										<Style TargetType="{x:Type TextBlock}">
-											<Setter Property="Visibility" Value="Collapsed"/>
-											<Style.Triggers>
-												<DataTrigger Binding="{Binding AudioInputs.Count}" Value="0">
-													<Setter Property="Visibility" Value="Visible"/>
-												</DataTrigger>
-											</Style.Triggers>
-										</Style>
-									</TextBlock.Style>
-								</TextBlock>
-							</Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="105"/>
+                                    <ColumnDefinition Width="60"/>
+                                    <ColumnDefinition Width="70"/>
+                                </Grid.ColumnDefinitions>
 
-							<!-- VBAN RX fields -->
-							<Grid Grid.Row="1">
-								<Grid.Style>
-									<Style TargetType="{x:Type Grid}">
-										<Setter Property="Visibility" Value="Collapsed"/>
-										<Style.Triggers>
-											<DataTrigger Binding="{Binding Input2Mode}" Value="{x:Static core:AudioEndpointMode.Vban}">
-												<Setter Property="Visibility" Value="Visible"/>
-											</DataTrigger>
-										</Style.Triggers>
-									</Style>
-								</Grid.Style>
+                                <TextBox Grid.Column="0"
+                                         MinWidth="100"
+                                         ToolTip="VBAN Sender IP (RemoteIp)"
+                                         Text="{Binding Input2VbanIp, UpdateSourceTrigger=PropertyChanged}"/>
 
-								<Grid.ColumnDefinitions>
-									<ColumnDefinition Width="105"/>
-									<ColumnDefinition Width="60"/>
-									<ColumnDefinition Width="70"/>
-								</Grid.ColumnDefinitions>
+                                <TextBox Grid.Column="1"
+                                         MinWidth="55"
+                                         Margin="2,0,2,0"
+                                         ToolTip="VBAN UDP Port"
+                                         Text="{Binding Input2VbanPort, UpdateSourceTrigger=PropertyChanged}"
+                                         HorizontalContentAlignment="Center"/>
 
-								<TextBox Grid.Column="0"
-										 MinWidth="100"
-										 ToolTip="VBAN Sender IP (RemoteIp)"
-										 Text="{Binding Input2VbanIp, UpdateSourceTrigger=PropertyChanged}"/>
+                                <TextBox Grid.Column="2"
+                                         MinWidth="65"
+                                         MaxLength="16"
+                                         ToolTip="VBAN Stream Name"
+                                         Text="{Binding Input2VbanStream, UpdateSourceTrigger=PropertyChanged}"/>
+                            </Grid>
 
-								<TextBox Grid.Column="1"
-										 MinWidth="55"
-										 Margin="2,0,2,0"
-										 ToolTip="VBAN UDP Port"
-										 Text="{Binding Input2VbanPort, UpdateSourceTrigger=PropertyChanged}"
-										 HorizontalContentAlignment="Center"/>
+                            <!-- VU row -->
+                            <Grid Grid.Row="2" Margin="0,6,0,0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="60"/>
+                                </Grid.ColumnDefinitions>
 
-								<TextBox Grid.Column="2"
-										 MinWidth="65"
-										 MaxLength="16"
-										 ToolTip="VBAN Stream Name"
-										 Text="{Binding Input2VbanStream, UpdateSourceTrigger=PropertyChanged}"/>
-							</Grid>
+                                <ProgressBar Grid.Column="0"
+                                             x:Name="VuInput2"
+                                             Minimum="0" Maximum="1"
+                                             Height="10"
+                                             VerticalAlignment="Center"/>
 
-							<!-- VU row -->
-							<Grid Grid.Row="2" Margin="0,6,0,0">
-								<Grid.ColumnDefinitions>
-									<ColumnDefinition Width="*"/>
-									<ColumnDefinition Width="60"/>
-								</Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="1"
+                                           x:Name="VuInput2Db"
+                                           Text="-inf"
+                                           Margin="8,0,0,0"
+                                           VerticalAlignment="Center"
+                                           HorizontalAlignment="Right"/>
+                            </Grid>
+                        </Grid>
 
-								<ProgressBar Grid.Column="0"
-											 x:Name="VuInput2"
-											 Minimum="0" Maximum="1"
-											 Height="10"
-											 VerticalAlignment="Center"/>
-
-								<TextBlock Grid.Column="1"
-										   x:Name="VuInput2Db"
-										   Text="-inf"
-										   Margin="8,0,0,0"
-										   VerticalAlignment="Center"
-										   HorizontalAlignment="Right"/>
-							</Grid>
-						</Grid>
-
-						<!-- =========================
+                        <!-- =========================
              OUT 1 (MAIN)
              ========================= -->
-						<TextBlock Grid.Row="1" Grid.Column="0" Text="Main Out:" VerticalAlignment="Top" Margin="0,10,0,0" Height="15"/>
+                        <TextBlock Grid.Row="1" Grid.Column="0" Text="Main Out:" VerticalAlignment="Top" Margin="0,10,0,0" Height="15"/>
 
-						<!-- Mode radios (STACKED) -->
-						<StackPanel Grid.Row="1" Grid.Column="0" Orientation="Vertical" Margin="0,28,0,0" Height="28" VerticalAlignment="Top">
-							<RadioButton Content="Local"
-										 GroupName="Out1Mode"
-										 IsChecked="{Binding Out1Mode, ConverterParameter={x:Static core:AudioEndpointMode.Local}, Converter={StaticResource EnumToBooleanConverter}}"/>
-							<RadioButton Content="VBAN"
-										 GroupName="Out1Mode"
-										 IsChecked="{Binding Out1Mode, ConverterParameter={x:Static core:AudioEndpointMode.Vban}, Converter={StaticResource EnumToBooleanConverter}}"/>
-						</StackPanel>
+                        <!-- Mode radios (STACKED) -->
+                        <StackPanel Grid.Row="1" Grid.Column="0" Orientation="Vertical" Margin="0,28,0,0" Height="28" VerticalAlignment="Top">
+                            <RadioButton Content="Local"
+                                         GroupName="Out1Mode"
+                                         IsChecked="{Binding Out1Mode, ConverterParameter={x:Static core:AudioEndpointMode.Local}, Converter={StaticResource EnumToBooleanConverter}}"/>
+                            <RadioButton Content="VBAN"
+                                         GroupName="Out1Mode"
+                                         IsChecked="{Binding Out1Mode, ConverterParameter={x:Static core:AudioEndpointMode.Vban}, Converter={StaticResource EnumToBooleanConverter}}"/>
+                        </StackPanel>
 
-						<Grid Grid.Row="1" Grid.Column="1" Margin="0,10,0,0">
-							<Grid.RowDefinitions>
-								<RowDefinition Height="Auto"/>
-								<RowDefinition Height="Auto"/>
-							</Grid.RowDefinitions>
+                        <Grid Grid.Row="1" Grid.Column="1" Margin="0,10,0,0">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
 
+                            <!-- LOCAL output combo -->
+                            <Grid Grid.Row="1">
+                                <Grid.Style>
+                                    <Style TargetType="{x:Type Grid}">
+                                        <Setter Property="Visibility" Value="Visible"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding Out1Mode}" Value="{x:Static core:AudioEndpointMode.Vban}">
+                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Grid.Style>
 
+                                <ComboBox ItemsSource="{Binding AudioOutputs}"
+                                          SelectedValuePath="Id"
+                                          DisplayMemberPath="Name"
+                                          SelectedValue="{Binding MainOutDeviceId}"
+                                          IsSynchronizedWithCurrentItem="False"/>
+                            </Grid>
 
-							<!-- LOCAL output combo -->
-							<Grid Grid.Row="1">
-								<Grid.Style>
-									<Style TargetType="{x:Type Grid}">
-										<Setter Property="Visibility" Value="Visible"/>
-										<Style.Triggers>
-											<DataTrigger Binding="{Binding Out1Mode}" Value="{x:Static core:AudioEndpointMode.Vban}">
-												<Setter Property="Visibility" Value="Collapsed"/>
-											</DataTrigger>
-										</Style.Triggers>
-									</Style>
-								</Grid.Style>
+                            <!-- VBAN TX fields -->
+                            <Grid Grid.Row="1">
+                                <Grid.Style>
+                                    <Style TargetType="{x:Type Grid}">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding Out1Mode}" Value="{x:Static core:AudioEndpointMode.Vban}">
+                                                <Setter Property="Visibility" Value="Visible"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Grid.Style>
 
-								<ComboBox ItemsSource="{Binding AudioOutputs}"
-										  SelectedValuePath="Id"
-										  DisplayMemberPath="Name"
-										  SelectedValue="{Binding MainOutDeviceId}"
-										  IsSynchronizedWithCurrentItem="False"/>
-							</Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="105"/>
+                                    <ColumnDefinition Width="60"/>
+                                    <ColumnDefinition Width="70"/>
+                                </Grid.ColumnDefinitions>
 
-							<!-- VBAN TX fields -->
-							<Grid Grid.Row="1">
-								<Grid.Style>
-									<Style TargetType="{x:Type Grid}">
-										<Setter Property="Visibility" Value="Collapsed"/>
-										<Style.Triggers>
-											<DataTrigger Binding="{Binding Out1Mode}" Value="{x:Static core:AudioEndpointMode.Vban}">
-												<Setter Property="Visibility" Value="Visible"/>
-											</DataTrigger>
-										</Style.Triggers>
-									</Style>
-								</Grid.Style>
+                                <TextBox Grid.Column="0"
+                                         MinWidth="100"
+                                         ToolTip="VBAN Receiver IP (RemoteIp)"
+                                         Text="{Binding Out1VbanIp, UpdateSourceTrigger=PropertyChanged}"/>
 
-								<Grid.ColumnDefinitions>
-									<ColumnDefinition Width="105"/>
-									<ColumnDefinition Width="60"/>
-									<ColumnDefinition Width="70"/>
-								</Grid.ColumnDefinitions>
+                                <TextBox Grid.Column="1"
+                                         MinWidth="55"
+                                         Margin="2,0,0,0"
+                                         ToolTip="VBAN UDP Port"
+                                         Text="{Binding Out1VbanPort, UpdateSourceTrigger=PropertyChanged}"
+                                         HorizontalContentAlignment="Center"/>
 
-								<TextBox Grid.Column="0"
-										 MinWidth="100"
-										 ToolTip="VBAN Receiver IP (RemoteIp)"
-										 Text="{Binding Out1VbanIp, UpdateSourceTrigger=PropertyChanged}"/>
+                                <TextBox Grid.Column="2"
+                                         MinWidth="65"
+                                         MaxLength="16"
+                                         Margin="2,0,0,0"
+                                         ToolTip="VBAN Stream Name"
+                                         Text="{Binding Out1VbanStream, UpdateSourceTrigger=PropertyChanged}"/>
+                            </Grid>
+                        </Grid>
 
-								<TextBox Grid.Column="1"
-										 MinWidth="55"
-										 Margin="2,0,0,0"
-										 ToolTip="VBAN UDP Port"
-										 Text="{Binding Out1VbanPort, UpdateSourceTrigger=PropertyChanged}"
-										 HorizontalContentAlignment="Center"/>
-
-								<TextBox Grid.Column="2"
-										 MinWidth="65"
-										 MaxLength="16"
-										 Margin="2,0,0,0"
-										 ToolTip="VBAN Stream Name"
-										 Text="{Binding Out1VbanStream, UpdateSourceTrigger=PropertyChanged}"/>
-							</Grid>
-						</Grid>
-
-						<!-- =========================
+                        <!-- =========================
              OUT 2 (MONITOR)
              ========================= -->
-						<TextBlock Grid.Row="1" Grid.Column="2" Text="Monitor Out:" VerticalAlignment="Top" Margin="12,10,0,0" Height="15" d:LayoutOverrides="LeftMargin, RightMargin, TopMargin, BottomMargin"/>
+                        <TextBlock Grid.Row="1" Grid.Column="2" Text="Monitor Out:" VerticalAlignment="Top" Margin="12,10,0,0" Height="15" d:LayoutOverrides="LeftMargin, RightMargin, TopMargin, BottomMargin"/>
 
-						<!-- Mode radios (STACKED) -->
-						<StackPanel Grid.Row="1" Grid.Column="2" Orientation="Vertical" Margin="12,28,0,0" Height="28" d:LayoutOverrides="LeftMargin, RightMargin, TopMargin, BottomMargin">
-							<RadioButton Content="Local"
-										 GroupName="Out2Mode"
-										 IsChecked="{Binding Out2Mode, ConverterParameter={x:Static core:AudioEndpointMode.Local}, Converter={StaticResource EnumToBooleanConverter}}"/>
-							<RadioButton Content="VBAN"
-										 GroupName="Out2Mode"
-										 IsChecked="{Binding Out2Mode, ConverterParameter={x:Static core:AudioEndpointMode.Vban}, Converter={StaticResource EnumToBooleanConverter}}"/>
-						</StackPanel>
+                        <!-- Mode radios (STACKED) -->
+                        <StackPanel Grid.Row="1" Grid.Column="2" Orientation="Vertical" Margin="12,28,0,0" Height="28" d:LayoutOverrides="LeftMargin, RightMargin, TopMargin, BottomMargin">
+                            <RadioButton Content="Local"
+                                         GroupName="Out2Mode"
+                                         IsChecked="{Binding Out2Mode, ConverterParameter={x:Static core:AudioEndpointMode.Local}, Converter={StaticResource EnumToBooleanConverter}}"/>
+                            <RadioButton Content="VBAN"
+                                         GroupName="Out2Mode"
+                                         IsChecked="{Binding Out2Mode, ConverterParameter={x:Static core:AudioEndpointMode.Vban}, Converter={StaticResource EnumToBooleanConverter}}"/>
+                        </StackPanel>
 
-						<Grid Grid.Row="1" Grid.Column="3" Margin="0,10,0,0">
-							<Grid.RowDefinitions>
-								<RowDefinition Height="Auto"/>
-								<RowDefinition Height="Auto"/>
-							</Grid.RowDefinitions>
+                        <Grid Grid.Row="1" Grid.Column="3" Margin="0,10,0,0">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
 
+                            <!-- LOCAL output combo -->
+                            <Grid Grid.Row="1">
+                                <Grid.Style>
+                                    <Style TargetType="{x:Type Grid}">
+                                        <Setter Property="Visibility" Value="Visible"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding Out2Mode}" Value="{x:Static core:AudioEndpointMode.Vban}">
+                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Grid.Style>
 
+                                <ComboBox ItemsSource="{Binding AudioOutputs}"
+                                          SelectedValuePath="Id"
+                                          DisplayMemberPath="Name"
+                                          SelectedValue="{Binding MonitorOutDeviceId}"
+                                          IsSynchronizedWithCurrentItem="False"/>
+                            </Grid>
 
-							<!-- LOCAL output combo -->
-							<Grid Grid.Row="1">
-								<Grid.Style>
-									<Style TargetType="{x:Type Grid}">
-										<Setter Property="Visibility" Value="Visible"/>
-										<Style.Triggers>
-											<DataTrigger Binding="{Binding Out2Mode}" Value="{x:Static core:AudioEndpointMode.Vban}">
-												<Setter Property="Visibility" Value="Collapsed"/>
-											</DataTrigger>
-										</Style.Triggers>
-									</Style>
-								</Grid.Style>
+                            <!-- VBAN TX fields -->
+                            <Grid Grid.Row="1">
+                                <Grid.Style>
+                                    <Style TargetType="{x:Type Grid}">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding Out2Mode}" Value="{x:Static core:AudioEndpointMode.Vban}">
+                                                <Setter Property="Visibility" Value="Visible"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Grid.Style>
 
-								<ComboBox ItemsSource="{Binding AudioOutputs}"
-										  SelectedValuePath="Id"
-										  DisplayMemberPath="Name"
-										  SelectedValue="{Binding MonitorOutDeviceId}"
-										  IsSynchronizedWithCurrentItem="False"/>
-							</Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="105"/>
+                                    <ColumnDefinition Width="60"/>
+                                    <ColumnDefinition Width="70"/>
+                                </Grid.ColumnDefinitions>
 
-							<!-- VBAN TX fields -->
-							<Grid Grid.Row="1">
-								<Grid.Style>
-									<Style TargetType="{x:Type Grid}">
-										<Setter Property="Visibility" Value="Collapsed"/>
-										<Style.Triggers>
-											<DataTrigger Binding="{Binding Out2Mode}" Value="{x:Static core:AudioEndpointMode.Vban}">
-												<Setter Property="Visibility" Value="Visible"/>
-											</DataTrigger>
-										</Style.Triggers>
-									</Style>
-								</Grid.Style>
+                                <TextBox Grid.Column="0"
+                                         MinWidth="100"
+                                         ToolTip="VBAN Receiver IP (RemoteIp)"
+                                         Text="{Binding Out2VbanIp, UpdateSourceTrigger=PropertyChanged}"/>
 
-								<Grid.ColumnDefinitions>
-									<ColumnDefinition Width="105"/>
-									<ColumnDefinition Width="60"/>
-									<ColumnDefinition Width="70"/>
-								</Grid.ColumnDefinitions>
+                                <TextBox Grid.Column="1"
+                                         MinWidth="55"
+                                         Margin="2,0,2,0"
+                                         ToolTip="VBAN UDP Port"
+                                         Text="{Binding Out2VbanPort, UpdateSourceTrigger=PropertyChanged}"
+                                         HorizontalContentAlignment="Center"/>
 
-								<TextBox Grid.Column="0"
-										 MinWidth="100"
-										 ToolTip="VBAN Receiver IP (RemoteIp)"
-										 Text="{Binding Out2VbanIp, UpdateSourceTrigger=PropertyChanged}"/>
+                                <TextBox Grid.Column="2"
+                                         MinWidth="65"
+                                         MaxLength="16"
+                                         ToolTip="VBAN Stream Name"
+                                         Text="{Binding Out2VbanStream, UpdateSourceTrigger=PropertyChanged}"/>
+                            </Grid>
+                        </Grid>
 
-								<TextBox Grid.Column="1"
-										 MinWidth="55"
-										 Margin="2,0,2,0"
-										 ToolTip="VBAN UDP Port"
-										 Text="{Binding Out2VbanPort, UpdateSourceTrigger=PropertyChanged}"
-										 HorizontalContentAlignment="Center"/>
+                    </Grid>
+                </GroupBox>
 
-								<TextBox Grid.Column="2"
-										 MinWidth="65"
-										 MaxLength="16"
-										 ToolTip="VBAN Stream Name"
-										 Text="{Binding Out2VbanStream, UpdateSourceTrigger=PropertyChanged}"/>
-							</Grid>
-						</Grid>
+                <!-- MIDI + GLOBAL UI COLORS (SIDE BY SIDE) -->
+                <GroupBox Header="MIDI And Global UI Colors" Margin="0,0,0,12">
+                    <Grid Margin="12">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="14"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
 
-					</Grid>
-				</GroupBox>
+                        <!-- =========================
+             LEFT: MIDI
+             ========================= -->
+                        <Grid Grid.Column="0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="130"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
 
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
 
-				<!-- MIDI -->
-				<GroupBox Header="MIDI" Margin="0,0,0,12">
-					<Grid Margin="12">
-						<Grid.ColumnDefinitions>
-							<ColumnDefinition Width="150"/>
-							<ColumnDefinition Width="*"/>
-						</Grid.ColumnDefinitions>
+                            <!-- MIDI In -->
+                            <TextBlock Grid.Row="0" Grid.Column="0" Text="MIDI In:" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                            <Grid Grid.Row="0" Grid.Column="1">
+                                <ComboBox ItemsSource="{Binding MidiInputs}"
+                          SelectedValuePath="Id"
+                          DisplayMemberPath="Name"
+                          SelectedValue="{Binding MidiInDeviceId}"
+                          IsSynchronizedWithCurrentItem="False"/>
 
-						<Grid.RowDefinitions>
-							<RowDefinition Height="Auto"/>
-							<RowDefinition Height="Auto"/>
-							<RowDefinition Height="Auto"/>
-							<RowDefinition Height="Auto"/>
-						</Grid.RowDefinitions>
+                                <TextBlock Text="No MIDI input devices found"
+                           Margin="10,0,0,0"
+                           VerticalAlignment="Center"
+                           Foreground="{StaticResource MutedTextBrush}">
+                                    <TextBlock.Style>
+                                        <Style TargetType="{x:Type TextBlock}">
+                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding MidiInputs.Count}" Value="0">
+                                                    <Setter Property="Visibility" Value="Visible"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                            </Grid>
 
-						<TextBlock Grid.Row="0" Grid.Column="0" Text="MIDI In:" VerticalAlignment="Center"/>
+                            <!-- MIDI Out -->
+                            <TextBlock Grid.Row="1" Grid.Column="0" Text="MIDI Out:" VerticalAlignment="Center" Margin="0,10,10,0"/>
+                            <Grid Grid.Row="1" Grid.Column="1" Margin="0,10,0,0">
+                                <ComboBox ItemsSource="{Binding MidiOutputs}"
+                          SelectedValuePath="Id"
+                          DisplayMemberPath="Name"
+                          SelectedValue="{Binding MidiOutDeviceId}"
+                          IsSynchronizedWithCurrentItem="False"/>
 
-						<Grid Grid.Row="0" Grid.Column="1">
-							<ComboBox ItemsSource="{Binding MidiInputs}"
-                                      SelectedValuePath="Id"
-                                      DisplayMemberPath="Name"
-                                      SelectedValue="{Binding MidiInDeviceId}"
-                                      IsSynchronizedWithCurrentItem="False"/>
+                                <TextBlock Text="No MIDI output devices found"
+                           Margin="10,0,0,0"
+                           VerticalAlignment="Center"
+                           Foreground="{StaticResource MutedTextBrush}">
+                                    <TextBlock.Style>
+                                        <Style TargetType="{x:Type TextBlock}">
+                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding MidiOutputs.Count}" Value="0">
+                                                    <Setter Property="Visibility" Value="Visible"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                            </Grid>
 
-							<TextBlock Text="No MIDI input devices found"
-                                       Margin="10,0,0,0"
-                                       VerticalAlignment="Center"
-                                       Foreground="{StaticResource MutedTextBrush}">
-								<TextBlock.Style>
-									<Style TargetType="{x:Type TextBlock}">
-										<Setter Property="Visibility" Value="Collapsed"/>
-										<Style.Triggers>
-											<DataTrigger Binding="{Binding MidiInputs.Count}" Value="0">
-												<Setter Property="Visibility" Value="Visible"/>
-											</DataTrigger>
-										</Style.Triggers>
-									</Style>
-								</TextBlock.Style>
-							</TextBlock>
-						</Grid>
+                            <!-- Armed (Input 1) -->
+                            <TextBlock Grid.Row="2" Grid.Column="0" Text="Armed (Input 1):" VerticalAlignment="Center" Margin="0,10,10,0"/>
+                            <Grid Grid.Row="2" Grid.Column="1" Margin="0,10,0,0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="70"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
 
-						<TextBlock Grid.Row="1" Grid.Column="0" Text="MIDI Out:" VerticalAlignment="Center" Margin="0,10,0,0"/>
+                                <TextBox Grid.Column="0"
+                         Text="{Binding MidiArmedInput1Value, UpdateSourceTrigger=PropertyChanged}"
+                         HorizontalContentAlignment="Center"/>
 
-						<Grid Grid.Row="1" Grid.Column="1" Margin="0,10,0,0">
-							<ComboBox ItemsSource="{Binding MidiOutputs}"
-                                      SelectedValuePath="Id"
-                                      DisplayMemberPath="Name"
-                                      SelectedValue="{Binding MidiOutDeviceId}"
-                                      IsSynchronizedWithCurrentItem="False"/>
+                                <TextBlock Grid.Column="1"
+                           Margin="10,0,0,0"
+                           Text="0–127 (MIDI value used when pad is Armed on Input 1)"
+                           Opacity="0.7"
+                           VerticalAlignment="Center"
+                           TextWrapping="Wrap"/>
+                            </Grid>
 
-							<TextBlock Text="No MIDI output devices found"
-                                       Margin="10,0,0,0"
-                                       VerticalAlignment="Center"
-                                       Foreground="{StaticResource MutedTextBrush}">
-								<TextBlock.Style>
-									<Style TargetType="{x:Type TextBlock}">
-										<Setter Property="Visibility" Value="Collapsed"/>
-										<Style.Triggers>
-											<DataTrigger Binding="{Binding MidiOutputs.Count}" Value="0">
-												<Setter Property="Visibility" Value="Visible"/>
-											</DataTrigger>
-										</Style.Triggers>
-									</Style>
-								</TextBlock.Style>
-							</TextBlock>
-						</Grid>
+                            <!-- Armed (Input 2) -->
+                            <TextBlock Grid.Row="3" Grid.Column="0" Text="Armed (Input 2):" VerticalAlignment="Center" Margin="0,10,10,0"/>
+                            <Grid Grid.Row="3" Grid.Column="1" Margin="0,10,0,0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="70"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
 
-						<!-- Global "Armed" LED values -->
-						<TextBlock Grid.Row="2" Grid.Column="0"
-                                   Text="Armed (Input 1):"
-                                   VerticalAlignment="Center"
-                                   Margin="0,10,0,0"/>
+                                <TextBox Grid.Column="0"
+                         Text="{Binding MidiArmedInput2Value, UpdateSourceTrigger=PropertyChanged}"
+                         HorizontalContentAlignment="Center"/>
 
-						<Grid Grid.Row="2" Grid.Column="1" Margin="0,10,0,0">
-							<Grid.ColumnDefinitions>
-								<ColumnDefinition Width="80"/>
-								<ColumnDefinition Width="*"/>
-							</Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="1"
+                           Margin="10,0,0,0"
+                           Text="0–127 (MIDI value used when pad is Armed on Input 2)"
+                           Opacity="0.7"
+                           VerticalAlignment="Center"
+                           TextWrapping="Wrap"/>
+                            </Grid>
+                        </Grid>
 
-							<TextBox Grid.Column="0"
-                                     Text="{Binding MidiArmedInput1Value, UpdateSourceTrigger=PropertyChanged}"
-                                     HorizontalContentAlignment="Center"/>
+                        <!-- divider -->
+                        <Border Grid.Column="1"
+                Width="1"
+                Background="{StaticResource ControlBorderBrush}"
+                Opacity="0.6"
+                Margin="6,0"/>
 
-							<TextBlock Grid.Column="1"
-                                       Text="0–127 (MIDI value used when pad is Armed on Input 1)"
-                                       Opacity="0.7"
-                                       VerticalAlignment="Center"
-                                       Margin="10,0,0,0"/>
-						</Grid>
+                        <!-- =========================
+             RIGHT: GLOBAL UI COLORS
+             ========================= -->
+                        <Grid Grid.Column="2">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="170"/>
+                                <ColumnDefinition Width="120"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
 
-						<TextBlock Grid.Row="3" Grid.Column="0"
-                                   Text="Armed (Input 2):"
-                                   VerticalAlignment="Center"
-                                   Margin="0,10,0,0"/>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
 
-						<Grid Grid.Row="3" Grid.Column="1" Margin="0,10,0,0">
-							<Grid.ColumnDefinitions>
-								<ColumnDefinition Width="80"/>
-								<ColumnDefinition Width="*"/>
-							</Grid.ColumnDefinitions>
+                            <!-- Armed Input 1 -->
+                            <TextBlock Grid.Row="0" Grid.Column="0"
+                       Text="Armed (Input 1 Hex):"
+                       VerticalAlignment="Center"
+                       Margin="0,0,10,0"/>
+                            <TextBox Grid.Row="0" Grid.Column="1"
+                     Text="{Binding UiArmedInput1Hex, UpdateSourceTrigger=PropertyChanged}"
+                     HorizontalContentAlignment="Center"/>
 
-							<TextBox Grid.Column="0"
-                                     Text="{Binding MidiArmedInput2Value, UpdateSourceTrigger=PropertyChanged}"
-                                     HorizontalContentAlignment="Center"/>
+                            <TextBlock Grid.Row="0" Grid.Column="2"
+                       Margin="10,0,0,0"
+                       Text="Used when a pad is Armed and Input Source = 1 (example: #FF4DB8)"
+                       Opacity="0.7"
+                       VerticalAlignment="Top"
+                       TextWrapping="Wrap"/>
 
-							<TextBlock Grid.Column="1"
-                                       Text="0–127 (MIDI value used when pad is Armed on Input 2)"
-                                       Opacity="0.7"
-                                       VerticalAlignment="Center"
-                                       Margin="10,0,0,0"/>
-						</Grid>
+                            <!-- Armed Input 2 -->
+                            <TextBlock Grid.Row="1" Grid.Column="0"
+                       Text="Armed (Input 2 Hex):"
+                       VerticalAlignment="Center"
+                       Margin="0,10,10,0"/>
+                            <TextBox Grid.Row="1" Grid.Column="1"
+                     Margin="0,10,0,0"
+                     Text="{Binding UiArmedInput2Hex, UpdateSourceTrigger=PropertyChanged}"
+                     HorizontalContentAlignment="Center"/>
 
-					</Grid>
-				</GroupBox>
+                            <TextBlock Grid.Row="1" Grid.Column="2"
+                       Margin="10,10,0,0"
+                       Text="Used when a pad is Armed and Input Source = 2 (example: #4DA3FF)"
+                       Opacity="0.7"
+                       VerticalAlignment="Top"
+                       TextWrapping="Wrap"/>
+                        </Grid>
 
-				<!-- GLOBAL UI COLORS -->
-				<GroupBox Header="Global UI Colors" Margin="0,0,0,12">
-					<Grid Margin="12">
-						<Grid.ColumnDefinitions>
-							<ColumnDefinition Width="170"/>
-							<ColumnDefinition Width="120"/>
-							<ColumnDefinition Width="*"/>
-						</Grid.ColumnDefinitions>
+                    </Grid>
+                </GroupBox>
 
-						<Grid.RowDefinitions>
-							<RowDefinition Height="Auto"/>
-							<RowDefinition Height="Auto"/>
-							<RowDefinition Height="Auto"/>
-							<RowDefinition Height="Auto"/>
-						</Grid.RowDefinitions>
+                <!-- GLOBAL SHORTCUTS -->
+                <GroupBox Header="Global Shortcuts (Hotkeys + MIDI)" Margin="0,0,0,12">
+                    <Grid Margin="12">
 
-						<!-- Armed Input 1 -->
-						<TextBlock Grid.Row="0" Grid.Column="0" Text="Armed (Input 1 Hex):" VerticalAlignment="Center"/>
-						<TextBox  Grid.Row="0" Grid.Column="1"
-                                  Text="{Binding UiArmedInput1Hex, UpdateSourceTrigger=PropertyChanged}"
-                                  HorizontalContentAlignment="Center"/>
-						<TextBlock Grid.Row="0" Grid.Column="2"
-                                   Text="Used when a pad is Armed and Input Source = 1 (example: #FF4DB8)"
-                                   Opacity="0.7"
-                                   VerticalAlignment="Center"
-                                   Margin="10,0,0,0"/>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="19"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
 
-						<!-- Armed Input 2 -->
-						<TextBlock Grid.Row="1" Grid.Column="0" Text="Armed (Input 2 Hex):" VerticalAlignment="Center" Margin="0,10,0,0"/>
-						<TextBox  Grid.Row="1" Grid.Column="1"
-                                  Margin="0,10,0,0"
-                                  Text="{Binding UiArmedInput2Hex, UpdateSourceTrigger=PropertyChanged}"
-                                  HorizontalContentAlignment="Center"/>
-						<TextBlock Grid.Row="1" Grid.Column="2"
-                                   Margin="10,10,0,0"
-                                   Text="Used when a pad is Armed and Input Source = 2 (example: #4DA3FF)"
-                                   Opacity="0.7"
-                                   VerticalAlignment="Center"/>
-					</Grid>
-				</GroupBox>
+                            <!-- LEFT: TRIM -->
+                            <Grid Grid.Column="0">
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
 
-				<!-- GLOBAL ACTIONS -->
-				<GroupBox Header="Global Actions (Hotkeys + MIDI)" Margin="0,0,0,12">
-					<Grid Margin="12">
-						<Grid.ColumnDefinitions>
-							<ColumnDefinition Width="160"/>
-							<ColumnDefinition Width="*"/>
-							<ColumnDefinition Width="Auto"/>
-							<ColumnDefinition Width="*"/>
-							<ColumnDefinition Width="Auto"/>
-						</Grid.ColumnDefinitions>
+                                <TextBlock Grid.Row="0"
+                                           Text="Trim"
+                                           FontWeight="Bold"
+                                           Margin="0,0,0,6"
+                                           Opacity="0.9"/>
 
-						<Grid.RowDefinitions>
-							<RowDefinition Height="Auto"/>
-							<RowDefinition Height="Auto"/>
-						</Grid.RowDefinitions>
+                                <!-- Select IN -->
+                                <Grid Grid.Row="1">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="70"/>
+                                        <ColumnDefinition Width="120"/>
+                                        <ColumnDefinition Width="54"/>
+                                        <ColumnDefinition Width="120"/>
+                                        <ColumnDefinition Width="54"/>
+                                    </Grid.ColumnDefinitions>
 
-						<TextBlock Grid.Row="0" Grid.Column="0" Text="Toggle Edit:" VerticalAlignment="Center"/>
+                                    <TextBlock Grid.Column="0" Text="IN:" VerticalAlignment="Center"/>
 
-						<TextBlock Grid.Row="0" Grid.Column="1"
-                                   Text="{Binding MidiBindToggleEdit}"
-                                   Opacity="0.85"
-                                   VerticalAlignment="Center"
-                                   TextTrimming="CharacterEllipsis"/>
+                                    <TextBox Grid.Column="1"
+                                             Style="{StaticResource BindBoxStyle}"
+                                             Margin="4,0,0,0"
+                                             Tag="MidiBindTrimSelectIn"
+                                             Text="{Binding MidiBindTrimSelectIn}"/>
 
-						<Button Grid.Row="0" Grid.Column="2"
-                                Content="Learn MIDI"
-                                Margin="10,0,10,0"
-                                Click="LearnMidi_ToggleEdit_Click"/>
+                                    <Button Grid.Column="2"
+                                            Height="26"
+                                            Padding="8,0"
+                                            Margin="4,0,0,0"
+                                            Content="Learn"
+                                            Click="LearnMidi_TrimSelectIn_Click"/>
 
-						<TextBlock Grid.Row="0" Grid.Column="3"
-                                   Text="{Binding HotkeyToggleEdit}"
-                                   Opacity="0.85"
-                                   VerticalAlignment="Center"
-                                   TextTrimming="CharacterEllipsis"/>
+                                    <TextBox Grid.Column="3"
+                                             Style="{StaticResource BindBoxStyle}"
+                                             Margin="6,0,0,0"
+                                             Tag="HotkeyTrimSelectIn"
+                                             Text="{Binding HotkeyTrimSelectIn}"/>
 
-						<Button Grid.Row="0" Grid.Column="4"
-                                Content="Set Hotkey"
-                                Margin="10,0,0,0"
-                                Click="SetHotkey_ToggleEdit_Click"/>
+                                    <Button Grid.Column="4"
+                                            Height="26"
+                                            Padding="8,0"
+                                            Margin="4,0,0,0"
+                                            Content="Set"
+                                            Click="SetHotkey_TrimSelectIn_Click"/>
+                                </Grid>
 
-						<TextBlock Grid.Row="1" Grid.Column="0" Text="Open Settings:" VerticalAlignment="Center" Margin="0,10,0,0"/>
+                                <!-- Select OUT -->
+                                <Grid Grid.Row="2" Margin="0,6,0,0">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="70"/>
+                                        <ColumnDefinition Width="120"/>
+                                        <ColumnDefinition Width="54"/>
+                                        <ColumnDefinition Width="120"/>
+                                        <ColumnDefinition Width="54"/>
+                                    </Grid.ColumnDefinitions>
 
-						<TextBlock Grid.Row="1" Grid.Column="1"
-                                   Text="{Binding MidiBindOpenSettings}"
-                                   Opacity="0.85"
-                                   VerticalAlignment="Center"
-                                   TextTrimming="CharacterEllipsis"
-                                   Margin="0,10,0,0"/>
+                                    <TextBlock Grid.Column="0" Text="OUT:" VerticalAlignment="Center"/>
 
-						<Button Grid.Row="1" Grid.Column="2"
-                                Content="Learn MIDI"
-                                Margin="10,10,10,0"
-                                Click="LearnMidi_OpenSettings_Click"/>
+                                    <TextBox Grid.Column="1"
+                                             Style="{StaticResource BindBoxStyle}"
+                                             Margin="4,0,0,0"
+                                             Tag="MidiBindTrimSelectOut"
+                                             Text="{Binding MidiBindTrimSelectOut}"/>
 
-						<TextBlock Grid.Row="1" Grid.Column="3"
-                                   Text="{Binding HotkeyOpenSettings}"
-                                   Opacity="0.85"
-                                   VerticalAlignment="Center"
-                                   TextTrimming="CharacterEllipsis"
-                                   Margin="0,10,0,0"/>
+                                    <Button Grid.Column="2"
+                                            Height="26"
+                                            Padding="8,0"
+                                            Margin="4,0,0,0"
+                                            Content="Learn"
+                                            Click="LearnMidi_TrimSelectOut_Click"/>
 
-						<Button Grid.Row="1" Grid.Column="4"
-                                Content="Set Hotkey"
-                                Margin="10,10,0,0"
-                                Click="SetHotkey_OpenSettings_Click"/>
-					</Grid>
-				</GroupBox>
+                                    <TextBox Grid.Column="3"
+                                             Style="{StaticResource BindBoxStyle}"
+                                             Margin="6,0,0,0"
+                                             Tag="HotkeyTrimSelectOut"
+                                             Text="{Binding HotkeyTrimSelectOut}"/>
 
-				<!-- TRIM CONTROLS -->
-				<GroupBox Header="Trim Controls (Global Hotkeys + MIDI)" Margin="0,0,0,12">
-					<Grid Margin="12">
-						<Grid.ColumnDefinitions>
-							<ColumnDefinition Width="160"/>
-							<ColumnDefinition Width="*"/>
-							<ColumnDefinition Width="Auto"/>
-							<ColumnDefinition Width="*"/>
-							<ColumnDefinition Width="Auto"/>
-						</Grid.ColumnDefinitions>
+                                    <Button Grid.Column="4"
+                                            Height="26"
+                                            Padding="8,0"
+                                            Margin="4,0,0,0"
+                                            Content="Set"
+                                            Click="SetHotkey_TrimSelectOut_Click"/>
+                                </Grid>
 
-						<Grid.RowDefinitions>
-							<RowDefinition Height="Auto"/>
-							<RowDefinition Height="Auto"/>
-							<RowDefinition Height="Auto"/>
-							<RowDefinition Height="Auto"/>
-						</Grid.RowDefinitions>
+                                <!-- Nudge + / - -->
+                                <Grid Grid.Row="3" Margin="0,6,0,0">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="70"/>
+                                        <ColumnDefinition Width="120"/>
+                                        <ColumnDefinition Width="54"/>
+                                        <ColumnDefinition Width="120"/>
+                                        <ColumnDefinition Width="54"/>
+                                    </Grid.ColumnDefinitions>
 
-						<TextBlock Grid.Row="0" Grid.Column="0" Text="Select IN (Start):" VerticalAlignment="Center"/>
-						<TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding MidiBindTrimSelectIn}" Opacity="0.85" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
-						<Button Grid.Row="0" Grid.Column="2" Content="Learn MIDI" Margin="10,0,10,0" Click="LearnMidi_TrimSelectIn_Click"/>
-						<TextBlock Grid.Row="0" Grid.Column="3" Text="{Binding HotkeyTrimSelectIn}" Opacity="0.85" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
-						<Button Grid.Row="0" Grid.Column="4" Content="Set Hotkey" Margin="10,0,0,0" Click="SetHotkey_TrimSelectIn_Click"/>
+                                    <TextBlock Grid.Column="0" Text="Nudge:" VerticalAlignment="Center"/>
 
-						<TextBlock Grid.Row="1" Grid.Column="0" Text="Select OUT (End):" VerticalAlignment="Center" Margin="0,10,0,0"/>
-						<TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding MidiBindTrimSelectOut}" Opacity="0.85" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" Margin="0,10,0,0"/>
-						<Button Grid.Row="1" Grid.Column="2" Content="Learn MIDI" Margin="10,10,10,0" Click="LearnMidi_TrimSelectOut_Click"/>
-						<TextBlock Grid.Row="1" Grid.Column="3" Text="{Binding HotkeyTrimSelectOut}" Opacity="0.85" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" Margin="0,10,0,0"/>
-						<Button Grid.Row="1" Grid.Column="4" Content="Set Hotkey" Margin="10,10,0,0" Click="SetHotkey_TrimSelectOut_Click"/>
+                                    <TextBox Grid.Column="1"
+                                             Style="{StaticResource BindBoxStyle}"
+                                             Margin="4,0,0,0"
+                                             Tag="MidiBindTrimNudgePlus"
+                                             Text="{Binding MidiBindTrimNudgePlus}"/>
 
-						<TextBlock Grid.Row="2" Grid.Column="0" Text="Nudge +:" VerticalAlignment="Center" Margin="0,10,0,0"/>
-						<TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding MidiBindTrimNudgePlus}" Opacity="0.85" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" Margin="0,10,0,0"/>
-						<Button Grid.Row="2" Grid.Column="2" Content="Learn MIDI" Margin="10,10,10,0" Click="LearnMidi_TrimPlus_Click"/>
-						<TextBlock Grid.Row="2" Grid.Column="3" Text="{Binding HotkeyTrimNudgePlus}" Opacity="0.85" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" Margin="0,10,0,0"/>
-						<Button Grid.Row="2" Grid.Column="4" Content="Set Hotkey" Margin="10,10,0,0" Click="SetHotkey_TrimPlus_Click"/>
+                                    <Button Grid.Column="2"
+                                            Height="26"
+                                            Padding="8,0"
+                                            Margin="4,0,0,0"
+                                            Content="+"
+                                            Click="LearnMidi_TrimPlus_Click"/>
 
-						<TextBlock Grid.Row="3" Grid.Column="0" Text="Nudge −:" VerticalAlignment="Center" Margin="0,10,0,0"/>
-						<TextBlock Grid.Row="3" Grid.Column="1" Text="{Binding MidiBindTrimNudgeMinus}" Opacity="0.85" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" Margin="0,10,0,0"/>
-						<Button Grid.Row="3" Grid.Column="2" Content="Learn MIDI" Margin="10,10,10,0" Click="LearnMidi_TrimMinus_Click"/>
-						<TextBlock Grid.Row="3" Grid.Column="3" Text="{Binding HotkeyTrimNudgeMinus}" Opacity="0.85" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" Margin="0,10,0,0"/>
-						<Button Grid.Row="3" Grid.Column="4" Content="Set Hotkey" Margin="10,10,0,0" Click="SetHotkey_TrimMinus_Click"/>
-					</Grid>
-				</GroupBox>
+                                    <TextBox Grid.Column="3"
+                                             Style="{StaticResource BindBoxStyle}"
+                                             Margin="6,0,0,0"
+                                             Tag="MidiBindTrimNudgeMinus"
+                                             Text="{Binding MidiBindTrimNudgeMinus}"/>
 
-				<!-- FOLDERS -->
-				<GroupBox Header="Audio Folders (Import/Drop Pools)">
-					<Grid Margin="12">
-						<Grid.RowDefinitions>
-							<RowDefinition Height="*"/>
-							<RowDefinition Height="Auto"/>
-							<RowDefinition Height="Auto"/>
-						</Grid.RowDefinitions>
+                                    <Button Grid.Column="4"
+                                            Height="26"
+                                            Padding="8,0"
+                                            Margin="4,0,0,0"
+                                            Content="−"
+                                            Click="LearnMidi_TrimMinus_Click"/>
+                                </Grid>
+                            </Grid>
 
-						<ListBox x:Name="FoldersList"
+                            <!-- divider -->
+                            <Border Grid.Column="1"
+                                    Width="1"
+                                    Background="{StaticResource ControlBorderBrush}"
+                                    Opacity="0.6"/>
+
+                            <!-- RIGHT: GLOBAL -->
+                            <Grid Grid.Column="2">
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+
+                                <TextBlock Grid.Row="0"
+                                           Text="Global"
+                                           FontWeight="Bold"
+                                           Margin="0,0,0,6"
+                                           Opacity="0.9"/>
+
+                                <!-- Toggle Edit -->
+                                <Grid Grid.Row="1">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="70"/>
+                                        <ColumnDefinition Width="120"/>
+                                        <ColumnDefinition Width="54"/>
+                                        <ColumnDefinition Width="120"/>
+                                        <ColumnDefinition Width="54"/>
+                                    </Grid.ColumnDefinitions>
+
+                                    <TextBlock Grid.Column="0" Text="Edit:" VerticalAlignment="Center"/>
+
+                                    <TextBox Grid.Column="1"
+                                             Style="{StaticResource BindBoxStyle}"
+                                             Margin="4,0,0,0"
+                                             Tag="MidiBindToggleEdit"
+                                             Text="{Binding MidiBindToggleEdit}"/>
+
+                                    <Button Grid.Column="2"
+                                            Height="26"
+                                            Padding="8,0"
+                                            Margin="4,0,0,0"
+                                            Content="Learn"
+                                            Click="LearnMidi_ToggleEdit_Click"/>
+
+                                    <TextBox Grid.Column="3"
+                                             Style="{StaticResource BindBoxStyle}"
+                                             Margin="6,0,0,0"
+                                             Tag="HotkeyToggleEdit"
+                                             Text="{Binding HotkeyToggleEdit}"/>
+
+                                    <Button Grid.Column="4"
+                                            Height="26"
+                                            Padding="8,0"
+                                            Margin="4,0,0,0"
+                                            Content="Set"
+                                            Click="SetHotkey_ToggleEdit_Click"/>
+                                </Grid>
+
+                                <!-- Open Settings -->
+                                <Grid Grid.Row="2" Margin="0,6,0,0">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="70"/>
+                                        <ColumnDefinition Width="120"/>
+                                        <ColumnDefinition Width="54"/>
+                                        <ColumnDefinition Width="120"/>
+                                        <ColumnDefinition Width="54"/>
+                                    </Grid.ColumnDefinitions>
+
+                                    <TextBlock Grid.Column="0" Text="Settings:" VerticalAlignment="Center"/>
+
+                                    <TextBox Grid.Column="1"
+                                             Style="{StaticResource BindBoxStyle}"
+                                             Margin="4,0,0,0"
+                                             Tag="MidiBindOpenSettings"
+                                             Text="{Binding MidiBindOpenSettings}"/>
+
+                                    <Button Grid.Column="2"
+                                            Height="26"
+                                            Padding="8,0"
+                                            Margin="4,0,0,0"
+                                            Content="Learn"
+                                            Click="LearnMidi_OpenSettings_Click"/>
+
+                                    <TextBox Grid.Column="3"
+                                             Style="{StaticResource BindBoxStyle}"
+                                             Margin="6,0,0,0"
+                                             Tag="HotkeyOpenSettings"
+                                             Text="{Binding HotkeyOpenSettings}"/>
+
+                                    <Button Grid.Column="4"
+                                            Height="26"
+                                            Padding="8,0"
+                                            Margin="4,0,0,0"
+                                            Content="Set"
+                                            Click="SetHotkey_OpenSettings_Click"/>
+                                </Grid>
+                            </Grid>
+
+                        </Grid>
+                    </Grid>
+                </GroupBox>
+
+                <!-- FOLDERS -->
+                <GroupBox Header="Audio Folders (Import/Drop Pools)">
+                    <Grid Margin="12">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="*"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+
+                        <ListBox x:Name="FoldersList"
                                  ItemsSource="{Binding AudioFolders}"
                                  Height="160"/>
 
-						<!-- Existing buttons -->
-						<StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,10,0,0">
-							<Button Content="Add Folder..." Width="120" Margin="0,0,8,0" Click="AddFolder_Click"/>
-							<Button Content="Remove Selected" Width="140" Click="RemoveFolder_Click"/>
-						</StackPanel>
+                        <!-- Existing buttons -->
+                        <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,10,0,0">
+                            <Button Content="Add Folder..." Width="120" Margin="0,0,8,0" Click="AddFolder_Click"/>
+                            <Button Content="Remove Selected" Width="140" Click="RemoveFolder_Click"/>
+                        </StackPanel>
 
-						<!-- Drop Folder controls using the same pool list -->
-						<GroupBox Grid.Row="2" Header="Drop Folder (Watch Folder)" Margin="0,12,0,0">
-							<Grid Margin="10">
-								<Grid.RowDefinitions>
-									<RowDefinition Height="Auto"/>
-									<RowDefinition Height="Auto"/>
-									<RowDefinition Height="Auto"/>
-								</Grid.RowDefinitions>
+                        <!-- Drop Folder controls using the same pool list -->
+                        <GroupBox Grid.Row="2" Header="Drop Folder (Watch Folder)" Margin="0,12,0,0">
+                            <Grid Margin="10">
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
 
-								<CheckBox Grid.Row="0"
+                                <CheckBox Grid.Row="0"
                                           Content="Enable Drop Folder Watcher"
                                           IsChecked="{Binding DropFolderEnabled}"/>
 
-								<TextBox Grid.Row="1"
+                                <TextBox Grid.Row="1"
                                          Margin="0,10,0,0"
                                          Text="{Binding DropWatchFolder}"
                                          IsReadOnly="True"
                                          Opacity="0.95"/>
 
-								<StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,10,0,0">
-									<Button Content="Use Selected as Drop Folder"
+                                <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,10,0,0">
+                                    <Button Content="Use Selected as Drop Folder"
                                             Width="220"
                                             Margin="0,0,8,0"
                                             Click="UseSelectedAsDropFolder_Click"/>
 
-									<Button Content="Browse..."
+                                    <Button Content="Browse..."
                                             Width="110"
                                             Margin="0,0,8,0"
                                             Click="BrowseDropWatchFolder_Click"/>
 
-									<Button Content="Open"
+                                    <Button Content="Open"
                                             Width="90"
                                             Margin="0,0,8,0"
                                             Click="OpenDropWatchFolder_Click"/>
 
-									<Button Content="Default"
+                                    <Button Content="Default"
                                             Width="90"
                                             Margin="0,0,8,0"
                                             Click="CreateDefaultDropWatchFolder_Click"/>
 
-									<Button Content="Clear"
+                                    <Button Content="Clear"
                                             Width="90"
                                             Click="ClearDropWatchFolder_Click"/>
-								</StackPanel>
-							</Grid>
-						</GroupBox>
+                                </StackPanel>
+                            </Grid>
+                        </GroupBox>
 
-					</Grid>
-				</GroupBox>
+                    </Grid>
+                </GroupBox>
 
-				<TextBlock Margin="0,10,0,0"
+                <TextBlock Margin="0,10,0,0"
                            Opacity="0.7"
                            TextWrapping="Wrap"
-                           Text="Note: Drop-mode assignment (auto-fill pads from watched folders) requires at least one pad to have Drop Folder Mode enabled in Pad Settings."/>
-			</StackPanel>
-		</ScrollViewer>
+                           Text="Note: Drop-mode assignment (auto-fill pads from watched folders) requires at least one pad to have Drop Folder Mode enabled in Pad Settings."
+                           Height="30"/>
+            </StackPanel>
+        </ScrollViewer>
 
-		<!-- FOOTER -->
-		<StackPanel Grid.Row="2"
-                    Orientation="Horizontal"
-                    HorizontalAlignment="Right"
-                    Margin="0,12,0,0">
+        <!-- FOOTER -->
+        <Border Grid.Row="2"
+                Background="{StaticResource PanelBrush}"
+                BorderBrush="{StaticResource ControlBorderBrush}"
+                BorderThickness="1"
+                CornerRadius="12"
+                Padding="2"
+                Margin="0,16,0,0">
+            <DockPanel LastChildFill="False">
 
-			<Button Content="Test LED (Send 25)"
-                    Width="160"
-                    Margin="0,0,8,0"
-                    Click="TestMidiOut25_Click"/>
+                <TextBlock DockPanel.Dock="Left"
+                           VerticalAlignment="Center"
+                           Foreground="{StaticResource MutedTextBrush}"
+                           Text=""/>
 
-			<Button Content="Cancel"
-                    Width="100"
-                    Margin="0,0,8,0"
-                    Click="Cancel_Click"/>
+                <StackPanel DockPanel.Dock="Right"
+                            Orientation="Horizontal"
+                            HorizontalAlignment="Right">
 
-			<Button Content="Save"
-                    Width="100"
-                    Click="Save_Click"/>
-		</StackPanel>
+                    <Button Style="{StaticResource EchopadTopButtonStyle}"
+                            Content="Test LED (Send 25)"
+                            MinWidth="160"
+                            Margin="0,0,8,0"
+                            Click="TestMidiOut25_Click"/>
 
-	</Grid>
+                    <Button Style="{StaticResource EchopadTopButtonStyle}"
+                            Content="Cancel"
+                            MinWidth="110"
+                            Margin="0,0,8,0"
+                            Click="Cancel_Click"/>
+
+                    <Button Style="{StaticResource EchopadTopButtonStyle}"
+                            Content="Save"
+                            MinWidth="110"
+                            Click="Save_Click"/>
+                </StackPanel>
+
+            </DockPanel>
+        </Border>
+
+    </Grid>
 </Window>

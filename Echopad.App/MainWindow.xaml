@@ -312,14 +312,17 @@
                 <!-- PAD HOST (kept perfectly square in code-behind)   -->
                 <!-- ================================================= -->
                 <Grid x:Name="PadHost"
-                      HorizontalAlignment="Center"
-                      VerticalAlignment="Center"
-                      ClipToBounds="False">
+      HorizontalAlignment="Center"
+      VerticalAlignment="Center"
+      ClipToBounds="False"
+      IsHitTestVisible="{Binding IsPadInputEnabled, RelativeSource={RelativeSource AncestorType={x:Type Window}}}"
+      Opacity="{Binding PadAreaOpacity,     RelativeSource={RelativeSource AncestorType={x:Type Window}}}">
 
                     <!-- ============================================= -->
                     <!-- 4x4 PAD GRID (BOUND TO VIEWMODEL)             -->
                     <!-- ============================================= -->
-                    <ItemsControl ItemsSource="{Binding Pads}">
+                    <ItemsControl ItemsSource="{Binding Pads}"
+              IsEnabled="{Binding IsPadsInputEnabled, RelativeSource={RelativeSource AncestorType=Window}}">
 
                         <ItemsControl.ItemsPanel>
                             <ItemsPanelTemplate>

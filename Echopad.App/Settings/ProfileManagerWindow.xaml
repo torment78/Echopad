@@ -14,6 +14,33 @@
         Background="{DynamicResource BgBrush}"
         Foreground="{DynamicResource TextBrush}">
 
+    <Window.Resources>
+        <!-- =========================================================
+Reusable "Clear binding" context menu
+========================================================= -->
+        <ContextMenu x:Key="BindClearMenu">
+            <MenuItem Header="Clear"
+              Click="BindClearMenu_Clear_Click"/>
+        </ContextMenu>
+
+        <!-- =========================================================
+BindBoxStyle (read-only display with Delete + Right-click Clear)
+========================================================= -->
+        <Style x:Key="BindBoxStyle"
+       TargetType="{x:Type TextBox}"
+       BasedOn="{StaticResource {x:Type TextBox}}">
+            <Setter Property="Height" Value="28"/>
+            <Setter Property="Padding" Value="10,0"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="IsReadOnly" Value="True"/>
+            <Setter Property="IsReadOnlyCaretVisible" Value="False"/>
+            <Setter Property="ContextMenu" Value="{StaticResource BindClearMenu}"/>
+            <Setter Property="ToolTip" Value="{Binding Text, RelativeSource={RelativeSource Self}}"/>
+            <EventSetter Event="PreviewKeyDown" Handler="BindBox_PreviewKeyDown"/>
+        </Style>
+
+    </Window.Resources>
+    
     <Grid Margin="16">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
@@ -78,7 +105,8 @@
                                  Foreground="{DynamicResource TextBrush}"
                                  Height="28"
                                  Padding="10,0"
-                                 Text="{Binding MidiModifierBind, UpdateSourceTrigger=PropertyChanged}"
+                                 Style="{StaticResource BindBoxStyle}"
+                                 Text="{Binding MidiModifierBind, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                  VerticalContentAlignment="Center"
                                  Margin="0,0,8,0" Width="205"/>
                         <Button Style="{StaticResource EchopadTopButtonStyle}"
@@ -100,7 +128,8 @@
                                  Foreground="{DynamicResource TextBrush}"
                                  Height="28"
                                  Padding="10,0"
-                                 Text="{Binding HotkeyModifier, UpdateSourceTrigger=PropertyChanged}"
+                                 Style="{StaticResource BindBoxStyle}"
+                                 Text="{Binding MidiBind, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                  VerticalContentAlignment="Center"
                                  Margin="0,0,8,0" Width="173"/>
                         <Button Style="{StaticResource EchopadTopButtonStyle}"
@@ -193,61 +222,54 @@
                                     <StackPanel Grid.Column="2" Grid.Row="0" Margin="0,0,10,0">
                                         <TextBlock Text="MIDI Bind" Foreground="{DynamicResource MutedTextBrush}" Margin="0,0,0,6"/>
                                         <DockPanel>
+                                            
+                                            <!-- NEW -->
                                             <TextBox DockPanel.Dock="Left"
-                                                     Background="{DynamicResource ControlBgBrush}"
-                                                     BorderBrush="{DynamicResource ControlBorderBrush}"
-                                                     Foreground="{DynamicResource TextBrush}"
-                                                     Height="28"
-                                                     Padding="10,0"
-                                                     VerticalContentAlignment="Center"
-                                                     Text="{Binding MidiBind, UpdateSourceTrigger=PropertyChanged}"
-                                                     Margin="0,0,8,0"/>
+                 Background="{DynamicResource ControlBgBrush}"
+                 BorderBrush="{DynamicResource ControlBorderBrush}"
+                 Foreground="{DynamicResource TextBrush}"                                    
+                 Style="{StaticResource BindBoxStyle}"
+                 Text="{Binding MidiBind, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                 Margin="0,0,8,0"/>
+
                                             <Button Style="{StaticResource EchopadTopButtonStyle}"
-                                                    Content="Learn"
-                                                    MaxWidth="30"
-                                                    Height="28"
-                                                    Padding="10,0"
-                                                    Command="{Binding LearnMidiCommand}"/>
+                Content="Learn"
+                MaxWidth="30"
+                Height="28"
+                Padding="10,0"
+                Command="{Binding LearnMidiCommand}"/>
                                         </DockPanel>
                                     </StackPanel>
 
-                                    <!-- REMOVED: Activate (not needed) -->
-                                    <!--
-<Button Grid.Column="3" Grid.Row="0"
-        Style="{StaticResource EchopadTopButtonStyle}"
-        Content="Activate"
-        MaxWidth="30"
-        Height="28"
-        Padding="5,0"
-        Command="{Binding ActivateCommand}"/>
--->
+
 
                                     <!-- Hotkey bind -->
                                     <StackPanel Grid.Column="1" Grid.Row="1" Grid.ColumnSpan="2" Margin="0,10,10,0">
                                         <TextBlock Text="Hotkey Bind" Foreground="{DynamicResource MutedTextBrush}" Margin="0,0,0,6"/>
                                         <DockPanel>
+
+                                            
                                             <TextBox x:Name="HotkeyBox"
-                                                     DockPanel.Dock="Left"
-                                                     Background="{DynamicResource ControlBgBrush}"
-                                                     BorderBrush="{DynamicResource ControlBorderBrush}"
-                                                     Foreground="{DynamicResource TextBrush}"
-                                                     Height="28"
-                                                     Padding="10,0"
-                                                     VerticalContentAlignment="Center"
-                                                     Text="{Binding HotkeyBind, UpdateSourceTrigger=PropertyChanged}"
-                                                     Margin="0,0,8,0"/>
+                 DockPanel.Dock="Left"
+                  Background="{DynamicResource ControlBgBrush}"
+                 BorderBrush="{DynamicResource ControlBorderBrush}"
+                 Foreground="{DynamicResource TextBrush}"                                   
+                 Style="{StaticResource BindBoxStyle}"
+                 Text="{Binding HotkeyBind, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                 Margin="0,0,8,0"/>
+
                                             <Button Style="{StaticResource EchopadTopButtonStyle}"
-                                                    Content="Learn"
-                                                    MaxWidth="30"
-                                                    Height="28"
-                                                    Padding="10,0"
-                                                    Click="BtnLearnHotkey_Click"
-                                                    Tag="{Binding}"/>
+                Content="Learn"
+                MaxWidth="30"
+                Height="28"
+                Padding="10,0"
+                Click="BtnLearnHotkey_Click"
+                Tag="{Binding}"/>
                                         </DockPanel>
 
                                         <TextBlock Margin="0,6,0,0"
-                                                   Foreground="{DynamicResource MutedTextBrush}"
-                                                   Text="Tip: Click Learn, then press a key combo (e.g. Ctrl+Shift+F1)."/>
+               Foreground="{DynamicResource MutedTextBrush}"
+               Text="Tip: Click Learn, then press a key combo (e.g. Ctrl+Shift+F1)."/>
                                     </StackPanel>
 
                                 </Grid>

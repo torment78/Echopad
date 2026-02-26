@@ -1,12 +1,12 @@
 ﻿using Echopad.App.Services;
 using Echopad.App.Settings;
 using Echopad.App.UI.Input;
+using Echopad.Audio;
 using Echopad.Core;
 using Echopad.Core.Controllers;
+using NAudio.Gui;
 using NAudio.Midi;
 using NAudio.Wave;
-using Echopad.Audio;
-
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -31,7 +31,37 @@ namespace Echopad.App
         // =====================================================
         // OLD:
         private readonly Echopad.Audio.IAudioEngine _audio = new Echopad.Audio.AudioEngine();
-        
+        // NEW: MainWindowViewModel
+        public bool IsPadsInputEnabled => !Echopad.App.Services.UiInputBlocker.IsBlocked;
+        // =====================================================
+        // NEW: UI BLOCK SCOPE (blocks pad input while dialogs are open)
+        // =====================================================
+        private sealed class ActionOnDispose : IDisposable
+        {
+            private Action? _a;
+            public ActionOnDispose(Action a) => _a = a;
+            public void Dispose()
+            {
+                var a = _a;
+                _a = null;
+                try { a?.Invoke(); } catch { }
+            }
+        }
+
+        private IDisposable BeginPadsUiBlock(string reason)
+        {
+            // If UiInputBlocker has a scope/token API, use it. If not, see note below.
+            var token = Echopad.App.Services.UiInputBlocker.Block(reason);
+
+            // Update XAML binding (IsPadsInputEnabled)
+            OnPropertyChanged(nameof(IsPadsInputEnabled));
+
+            return new ActionOnDispose(() =>
+            {
+                try { token.Dispose(); } catch { }
+                OnPropertyChanged(nameof(IsPadsInputEnabled));
+            });
+        }
         // NEW:
         //private readonly Echopad.Audio.AudioEngine _audio = new Echopad.Audio.AudioEngine();
         // NEW: rolling buffer commit -> wav -> assign pad
@@ -489,10 +519,7 @@ namespace Echopad.App
                 ps.StartMs = dst.StartMs;
                 ps.EndMs = dst.EndMs;
 
-                // DO NOT copy modes or bindings
-                // ps.IsEchoMode / ps.IsDropFolderMode untouched
-                // ps.PadHotkey / ps.MidiTriggerDisplay untouched
-                // etc.
+               
 
                 _settingsService.Save(gs);
                 _profiles.SavePadsToProfile(gs, ActiveProfileIndex);
@@ -1183,6 +1210,10 @@ namespace Echopad.App
 
                 if (DoesEventMatchBind(ev, b.Value))
                 {
+                    // NEW: block pad triggers while dialogs are open
+                    if (!IsPadsInputEnabled)
+                        return true; // consume so it doesn't leak
+
                     TriggerPadFromMidi(padIndex);
                     return true;
                 }
@@ -1266,7 +1297,8 @@ namespace Echopad.App
                 return;
             }
             _lastMidiPadUtc[padIndex] = now;
-
+            if (!IsPadsInputEnabled)
+                return;
             RememberLastActivatedPad(padIndex);
             _controller.ActivatePad(padIndex);
         }
@@ -1531,8 +1563,11 @@ namespace Echopad.App
                 {
                     Owner = this
                 };
-
-                win.ShowDialog();
+                using var _padBlock = BeginPadsUiBlock("ProfileManagerWindow");
+                using (Echopad.App.Services.UiInputBlocker.Block("ProfileManagerWindow"))
+                {
+                    win.ShowDialog();
+                }
 
                 // Optional: after closing, refresh the squircle number + anything else
                 // If your squircle binds to ActiveProfileIndex, this is enough:
@@ -1711,7 +1746,7 @@ namespace Echopad.App
                 return;
 
             _settingsDialogOpen = true;
-
+            using var _padBlock = BeginPadsUiBlock("SettingsWindow");
             try
             {
                 var audioProvider = new Echopad.Audio.AudioDeviceProvider();
@@ -1722,7 +1757,10 @@ namespace Echopad.App
                 // NEW: reload and re-assign so WPF converter receives updated settings
                 GlobalSettings = _settingsService.Load();
                 OnPropertyChanged(nameof(GlobalSettings)); // if MainWindow implements INotifyPropertyChanged
-                win.ShowDialog();
+                using (Echopad.App.Services.UiInputBlocker.Block("SettingsWindow"))
+                {
+                    win.ShowDialog();
+                }
 
                 if (DataContext is MainViewModel mvm)
                     HydratePadsFromSettings(mvm);
@@ -1754,7 +1792,7 @@ namespace Echopad.App
                 return;
 
             _padSettingsDialogOpen = true;
-
+            using var _padBlock = BeginPadsUiBlock("PadSettingsWindow");
             try
             {
                 // =====================================================
@@ -1868,7 +1906,8 @@ namespace Echopad.App
             var hot = BuildHotkeyText(e);
             if (string.IsNullOrWhiteSpace(hot))
                 return false;
-            // NEW: Profile hotkeys (modifier + slot key OR full bind)
+
+            // Profile hotkeys first
             if (TryHandleProfileHotkeys(e))
                 return true;
 
@@ -1901,6 +1940,13 @@ namespace Echopad.App
                     if (!string.IsNullOrWhiteSpace(ps.PadHotkey) &&
                         string.Equals(hot, ps.PadHotkey, StringComparison.OrdinalIgnoreCase))
                     {
+                        // Block pad hotkeys while dialogs open
+                        if (!IsPadsInputEnabled)
+                        {
+                            e.Handled = true;
+                            return true;
+                        }
+
                         RememberLastActivatedPad(padIndex);
                         _controller.ActivatePad(padIndex);
                         e.Handled = true;
@@ -1994,6 +2040,12 @@ namespace Echopad.App
 
             if (_padKeymap.TryGetPadNumber(e.Key, out int padNumber))
             {
+
+                if (!IsPadsInputEnabled)
+                {
+                    e.Handled = true;
+                    return;
+                }
                 RememberLastActivatedPad(padNumber);
                 _controller.ActivatePad(padNumber);
                 e.Handled = true;
