@@ -636,12 +636,13 @@ NEW: BindBoxStyle (read-only display box with Clear + Delete)
                Margin="0,7,8,7"/>
 
                     <Slider Grid.Column="4"
-            Minimum="-60"
-            Maximum="20"
-            TickFrequency="1"
-            IsSnapToTickEnabled="False"
-            Value="{Binding GainDb, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Margin="0,6,0,5"/>
-
+            x:Name="GainSlider"
+    Minimum="-60"
+    Maximum="20"
+    Value="{Binding GainDb, UpdateSourceTrigger=PropertyChanged}"
+    IsSnapToTickEnabled="True"
+    TickFrequency="1"
+    MouseDoubleClick="GainSlider_MouseDoubleClick" Margin="0,6,0,5"/>
                     <!-- Value box AFTER slider -->
                     <TextBox Grid.Column="5"
              Margin="8,0,0,0"

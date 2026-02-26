@@ -24,6 +24,9 @@
     <File Path="docs/images/trim-in.png" />
     <File Path="docs/images/trim-out.png" />
   </Folder>
+  <Folder Name="/Solution Items/">
+    <File Path="installer/Echopad.iss" />
+  </Folder>
   <Project Path="Echopad.App/Echopad.App.csproj" Id="5c2c3170-5be5-4fb9-81a8-685973dee8d8" />
   <Project Path="Echopad.Audio/Echopad.Audio.csproj" />
   <Project Path="Echopad.Core/Echopad.Core.csproj" />

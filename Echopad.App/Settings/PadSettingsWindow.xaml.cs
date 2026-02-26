@@ -234,7 +234,14 @@ namespace Echopad.App.Settings
 
             UpdatePlayheadVisual(_previewPosMs);
         }
-
+        private void GainSlider_MouseDoubleClick(object sender, MouseButtonEventArgs e)
+        {
+            if (DataContext is PadSettingsViewModel vm)
+            {
+                vm.GainDb = 0f;     // reset to unity
+                e.Handled = true;   // prevent any weird bubbling
+            }
+        }
         private void StartMs_Up_Click(object sender, RoutedEventArgs e)
         {
             _vm.NudgeStart(+_vm.TrimStepMs);
