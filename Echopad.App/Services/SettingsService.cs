@@ -11,6 +11,7 @@ namespace Echopad.App.Services
         // SEARCH ANCHOR: _settingsPath
         // =====================================================
         private readonly string _settingsPath;
+        private readonly IStartupRegistration? _startup;
 
         private static readonly JsonSerializerOptions JsonOpts = new()
         {
@@ -23,7 +24,7 @@ namespace Echopad.App.Services
         public string DataDirectory { get; }
         public string CapturesDirectory => Path.Combine(DataDirectory, "Captures");
 
-        public SettingsService(string? dataDirectory = null)
+        public SettingsService(string? dataDirectory = null, IStartupRegistration? startup = null)
         {
             var dir = dataDirectory ?? AppPaths.RootDir;
 
@@ -31,6 +32,8 @@ namespace Echopad.App.Services
             DataDirectory = dir;
 
             _settingsPath = Path.Combine(dir, "echopad.settings.json");
+            _startup = startup ?? (dataDirectory == null
+                ? new WindowsStartupRegistration(Path.Combine(AppContext.BaseDirectory, "Echopad.App.exe")) : null);
 
             // Injected test directories never inspect or migrate the real user's data.
             if (dataDirectory == null) LegacyDataMigration.MigrateDefault(dir);
@@ -59,16 +62,31 @@ namespace Echopad.App.Services
             }
         }
 
+        public void ReconcileWindowsStartup() => _startup?.SetEnabled(Load().Desktop.StartWithWindows);
+
         public void Save(GlobalSettings settings)
         {
             if (settings == null) return;
 
             settings.Pads ??= new System.Collections.Generic.Dictionary<int, PadSettings>();
+            settings.EnsureCompatibility();
 
             var json = JsonSerializer.Serialize(settings, JsonOpts);
 
-            // NOTE: still simple write; you can make this atomic later if you want
-            File.WriteAllText(_settingsPath, json);
+            bool previousStartup = Load().Desktop.StartWithWindows;
+            _startup?.SetEnabled(settings.Desktop.StartWithWindows);
+            string temporary = _settingsPath + "." + Guid.NewGuid().ToString("N") + ".tmp";
+            try
+            {
+                File.WriteAllText(temporary, json);
+                File.Move(temporary, _settingsPath, overwrite: true);
+            }
+            catch
+            {
+                try { _startup?.SetEnabled(previousStartup); } catch { /* Preserve the save failure for the UI. */ }
+                throw;
+            }
+            finally { if (File.Exists(temporary)) File.Delete(temporary); }
         }
     }
 }

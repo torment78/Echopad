@@ -8,7 +8,7 @@ EchoPad is a Windows audio pad sampler for live capture, sound clips, streaming 
 
 ## Unsigned Dev Release
 
-Version **1.1.0-dev.20260929.2** adds the ElkaSoft install/data folders, automatic migration of older saves and media, installer downloads inside Settings, and matching horizontal/vertical waveform artwork. It includes the tabbed settings, clearer pad states, profile selection and naming, improved hotkey/CC handling, PNG pad artwork and appearance controls introduced in the previous development build. This is the normal local/VBAN application; the separate VST edition is future work.
+Version **1.1.0-dev.20260929.3** adds Windows startup and tray controls in a new General tab, plus a dark installer using EchoPad's portrait waveform artwork and the ElkaSoft family layout. It includes automatic migration of older saves, installer downloads inside Settings, clearer pad states, profile names, improved hotkey/CC handling and PNG pad artwork. This is the normal local/VBAN application; the separate VST edition is future work.
 
 Download development builds from [GitHub Releases](https://github.com/torment78/Echopad/releases). Choose the Windows x64 installer or extract the complete self-contained ZIP and run `Echopad.App.exe`. This development release is unsigned and marked as a prerelease.
 
@@ -16,7 +16,11 @@ Download development builds from [GitHub Releases](https://github.com/torment78/
 
 ![Settings and appearance controls](docs/images/current/settings-Appearance-full.png)
 
-Settings now has **Audio routing**, **MIDI & colors**, **Shortcuts**, **Audio folders**, **Profiles**, **Appearance**, and **Updates** tabs. Loaded pads show a stronger color across the whole surface. Rounded sliders independently adjust loaded fill, playing fill and outline intensity.
+Settings now has **General**, **Audio routing**, **MIDI & colors**, **Shortcuts**, **Audio folders**, **Profiles**, **Appearance**, and **Updates** tabs. Loaded pads show a stronger color across the whole surface. Rounded sliders independently adjust loaded fill, playing fill and outline intensity.
+
+![Windows startup and tray settings](docs/images/current/settings-General.png)
+
+**General** offers Start with Windows, Open to tray, Close to tray and Minimize to tray. All four start off. Audio, MIDI and rolling capture keep running while the window is hidden. Double-click the tray icon to restore EchoPad; its menu offers Open, Settings and Exit. Launching the shortcut again restores the existing instance.
 
 ![Pad graphics editor](docs/images/current/pad-Graphics.png)
 
@@ -43,7 +47,7 @@ dotnet run --project Echopad.Tests -c Release
 Build a tested, self-contained unsigned package with Inno Setup 6 installed:
 
 ```powershell
-./scripts/Build-UnsignedRelease.ps1 -Version 1.1.0-dev.20260929.2
+./scripts/Build-UnsignedRelease.ps1 -Version 1.1.0-dev.20260929.3
 ```
 
 Use `-SkipInstaller` for a ZIP-only package. Output is written under `artifacts/release/<version>`, with SHA-256 checksums. The script does not publish anything to GitHub.

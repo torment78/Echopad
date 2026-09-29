@@ -30,6 +30,7 @@ static partial class Program
             var dir=Path.Combine(AppContext.BaseDirectory,"test-data",Guid.NewGuid().ToString("N"));
             var settings=new SettingsService(dir);
             MigrationChecks(Path.Combine(dir, "migration-fixtures"));
+            DesktopChecks(Path.Combine(dir, "desktop-fixtures"));
             var devices=new Devices();
             UpdateChecks();
             InstallerUpdateChecks(Path.Combine(dir, "update-fixtures")).GetAwaiter().GetResult();
@@ -161,6 +162,7 @@ static partial class Program
         var main=new MainWindow(settings);
         Render((FrameworkElement)main.Content,"main",700,760);
         var model=(MainViewModel)main.DataContext;
+        CaptureExitChecks(main, model);
         var demoGraphics=model.Pads[0].Graphics.Clone();
         model.Pads[0].Graphics=new();
         main.GlobalSettings.GetOrCreatePad(1).UiActiveHex="#FF3030";

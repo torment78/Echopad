@@ -12,7 +12,7 @@ Run mode is for capture and playback. Edit mode provides trimming, pad setup and
 
 ## This development release
 
-The interface now has seven global settings tabs and three pad settings tabs. It includes profile names/search, a Shift-click profile picker, improved modifier shortcuts and CC handling, stronger loaded/playing colors, global hue and intensity controls, stopped/playing PNG artwork with Fit/Crop and opacity, and a manual GitHub update checker.
+The interface now has eight global settings tabs and three pad settings tabs. General adds Windows startup, open/close/minimize to tray and an Open/Settings/Exit tray menu. It also includes profile names/search, a Shift-click profile picker, improved modifier shortcuts and CC handling, stronger loaded/playing colors, global hue and intensity controls, stopped/playing PNG artwork with Fit/Crop and opacity, and a GitHub update checker with verified installer downloads.
 
 ![Pad graphics editor](images/current/pad-Graphics.png)
 

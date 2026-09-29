@@ -103,6 +103,37 @@
       <TextBlock Text=" / Settings" FontSize="14" Foreground="{DynamicResource SecondaryTextBrush}"/>
     </DockPanel>
     <TabControl x:Name="Pages" Grid.Row="1">
+      <TabItem Header="General" Tag="General">
+        <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="0,20,8,0">
+          <StackPanel>
+            <Border Style="{StaticResource Card}"><StackPanel>
+              <TextBlock Text="Startup &amp; tray" FontSize="22" FontWeight="SemiBold"/>
+              <TextBlock Text="Choose how EchoPad opens and what happens when you close or minimize its window." Style="{StaticResource Hint}" Margin="0,8,0,20"/>
+              <Grid Margin="0,0,0,20"><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                <StackPanel Margin="0,0,24,0"><TextBlock Text="Start with Windows" FontSize="15"/><TextBlock Text="Launch EchoPad when you sign in to this Windows account." Style="{StaticResource Hint}"/></StackPanel>
+                <ToggleButton Grid.Column="1" Style="{StaticResource Switch}" IsChecked="{Binding StartWithWindows}" AutomationProperties.Name="Start with Windows"/>
+              </Grid>
+              <Grid Margin="0,0,0,20"><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                <StackPanel Margin="0,0,24,0"><TextBlock Text="Open to tray" FontSize="15"/><TextBlock Text="Start in the notification area. Audio, MIDI and rolling capture stay active." Style="{StaticResource Hint}"/></StackPanel>
+                <ToggleButton Grid.Column="1" Style="{StaticResource Switch}" IsChecked="{Binding StartToTray}" AutomationProperties.Name="Open to tray"/>
+              </Grid>
+              <Grid Margin="0,0,0,20"><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                <StackPanel Margin="0,0,24,0"><TextBlock Text="Close to tray" FontSize="15"/><TextBlock Text="The main window's X hides EchoPad instead of quitting. Use Exit EchoPad in the tray menu to quit." Style="{StaticResource Hint}"/></StackPanel>
+                <ToggleButton Grid.Column="1" Style="{StaticResource Switch}" IsChecked="{Binding CloseToTray}" AutomationProperties.Name="Close to tray"/>
+              </Grid>
+              <Grid><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                <StackPanel Margin="0,0,24,0"><TextBlock Text="Minimize to tray" FontSize="15"/><TextBlock Text="Minimizing hides the taskbar button and keeps EchoPad in the notification area." Style="{StaticResource Hint}"/></StackPanel>
+                <ToggleButton Grid.Column="1" Style="{StaticResource Switch}" IsChecked="{Binding MinimizeToTray}" AutomationProperties.Name="Minimize to tray"/>
+              </Grid>
+            </StackPanel></Border>
+            <Border Style="{StaticResource Card}"><StackPanel>
+              <TextBlock Text="Find EchoPad again" FontSize="16" FontWeight="SemiBold"/>
+              <TextBlock Text="Double-click the tray icon to open EchoPad, or right-click it for Open, Settings and Exit. Launching the shortcut again opens the existing instance. Windows may put the icon under the notification-area arrow." Style="{StaticResource Hint}" Margin="0,8,0,0"/>
+              <TextBlock Text="These options are off by default. Settings' Close button still closes only this settings window. Updates and Windows shutdown always exit EchoPad." Style="{StaticResource Hint}" Margin="0,8,0,0"/>
+            </StackPanel></Border>
+          </StackPanel>
+        </ScrollViewer>
+      </TabItem>
       <TabItem Header="Audio routing" Tag="Audio">
         <Grid Margin="12,24,12,16">
           <Grid.ColumnDefinitions>

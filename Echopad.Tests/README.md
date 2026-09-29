@@ -6,7 +6,9 @@ Run on Windows with the .NET 10 SDK:
 dotnet run --project Echopad.Tests -c Release
 ```
 
-Runs 111 checks covering data migration, 15-second rolling capture and WAV export, waveform loading, copy gesture lifecycle, modifier chords, MIDI parsing/release thresholds, profile persistence/linking, settings merge behavior, route toggles, fixed pad brightness, PNG import/persistence/rendering, updates and installer downloads, and WPF page construction. It renders all settings and pad tabs, the main window and shortcut dialog into the test output directory's `previews` folder.
+Runs 141 checks covering Windows startup/tray lifecycle, data migration, 15-second rolling capture and WAV export, waveform loading, copy gesture lifecycle, modifier chords, MIDI parsing/release thresholds, profile persistence/linking, settings merge behavior, route toggles, fixed pad brightness, PNG import/persistence/rendering, updates and installer downloads, and WPF page construction. It renders all settings and pad tabs, the main window and shortcut dialog into the test output directory's `previews` folder.
+
+Desktop checks use an injected startup-entry store and tray backend. They cover defaults, persistence, failed registration, paths with spaces, relocation, per-profile independence, single-instance activation, hidden startup, close/minimize/restore, explicit exit and update bypass, capture-save waits, and playback not delaying shutdown. A native tray smoke check loads and disposes the embedded icon/menu without showing a notification icon, and verifies preservation of the host async context. Offscreen windows never intentionally take focus. The tests do not modify the user's Run registry or perform a real sign-in.
 
 Migration fixtures cover old user/executable folders, relative media paths, recordings, both PNG states, named/active profiles, hotkeys and MIDI, trim/routing, Unicode, unknown JSON properties, source priority, external-path preservation, filename collisions, existing destination data, one-time completion and retries after malformed JSON or a blocked media copy. Sources remain intact; tests never migrate the real user's files or execute an installer.
 

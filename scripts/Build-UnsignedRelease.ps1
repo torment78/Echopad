@@ -1,5 +1,5 @@
 param(
-    [string]$Version = '1.1.0-dev.20260929.2',
+    [string]$Version = '1.1.0-dev.20260929.3',
     [switch]$SkipInstaller
 )
 $ErrorActionPreference = 'Stop'

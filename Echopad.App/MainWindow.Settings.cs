@@ -11,15 +11,24 @@ namespace Echopad.App;
 
 public partial class MainWindow
 {
+    private bool _backgroundServicesStarted;
+    private int _pendingCaptureCount;
+    internal void StartBackgroundServices()
+    {
+        if (_backgroundServicesStarted) return;
+        _backgroundServicesStarted = true;
+        RefreshDropWatcher(); SetupMidiDevices(); SetupInputTaps(); SyncAllPadLeds();
+    }
+    internal void OpenGeneralSettings() => OpenSettingsWindow("General");
     private void PadGutter_SizeChanged(object sender, SizeChangedEventArgs e) => UpdatePadHostSquare();
     public bool HasMidiInput => _midiIn != null;
     public void CancelMidiLearn() => _pendingMidiLearn = null;
     internal async Task WaitForPendingCapturesAsync(CancellationToken cancellationToken)
     {
         var deadline = DateTime.UtcNow.AddSeconds(30);
-        while (DataContext is MainViewModel vm && vm.Pads.Any(p => p.IsBusy))
+        while (_pendingCaptureCount > 0)
         {
-            if (DateTime.UtcNow >= deadline) throw new InvalidOperationException("A pad is still saving audio. Wait for it to finish and try the update again.");
+            if (DateTime.UtcNow >= deadline) throw new InvalidOperationException("A pad is still saving audio. Wait for it to finish and try again.");
             await Task.Delay(50, cancellationToken);
         }
     }

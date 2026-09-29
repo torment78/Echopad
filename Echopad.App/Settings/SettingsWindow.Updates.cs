@@ -81,7 +81,7 @@ public partial class SettingsWindow
                     CancelUpdateButton.IsEnabled = false;
                     UpdateStatus.Text = "Starting installer. EchoPad will close after the Windows prompt is accepted…";
                 }, InstallerUpdateService.LaunchInstaller,
-                () => { _closingForUpdate = true; Application.Current.Shutdown(); }, progress, cancellation.Token);
+                () => { _closingForUpdate = true; ((App)Application.Current).ExitForUpdate(); }, progress, cancellation.Token);
         }
         catch (Win32Exception ex) when (ex.NativeErrorCode == 1223)
         { UpdateStatus.Text = "Installer canceled. EchoPad is still running."; }

@@ -15,6 +15,10 @@ public sealed partial class SettingsViewModel : IDisposable
     public ICollectionView ProfileView { get; private set; } = null!;
     public event Action? Saved;
     public string SaveStatus { get; private set; } = "Changes are saved automatically.";
+    public bool StartWithWindows { get => Settings.Desktop.StartWithWindows; set { Settings.Desktop.StartWithWindows = value; Changed(); } }
+    public bool StartToTray { get => Settings.Desktop.StartToTray; set { Settings.Desktop.StartToTray = value; Changed(); } }
+    public bool CloseToTray { get => Settings.Desktop.CloseToTray; set { Settings.Desktop.CloseToTray = value; Changed(); } }
+    public bool MinimizeToTray { get => Settings.Desktop.MinimizeToTray; set { Settings.Desktop.MinimizeToTray = value; Changed(); } }
     private string _profileSearch = "";
     public string ProfileSearch { get => _profileSearch; set { _profileSearch = value; ProfileView.Refresh(); OnPropertyChanged(); } }
     public string? ProfileModifier { get => Settings.ProfileSwitch.HotkeyModifier; set { Settings.ProfileSwitch.HotkeyModifier = value; Changed(); } }

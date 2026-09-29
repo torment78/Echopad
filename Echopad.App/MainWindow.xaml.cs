@@ -398,6 +398,7 @@ namespace Echopad.App
 
             _controller.CommitFromBufferRequested += async pad =>
             {
+                _pendingCaptureCount++;
                 try
                 {
                     // If pad already has a clip, ignore (safety)
@@ -457,6 +458,7 @@ namespace Echopad.App
                     pad.IsBusy = false;
                     // Optional later: show toast/log
                 }
+                finally { _pendingCaptureCount--; }
             };
 
 
@@ -468,26 +470,8 @@ namespace Echopad.App
             Loaded += (_, __) =>
             {
                 UpdatePadHostSquare();
-                Keyboard.Focus(this);
-
-                // Start watcher after UI is up (and settings are loaded)
-                RefreshDropWatcher();
-
-                // MIDI: open ports after settings are loaded and UI is ready
-                SetupMidiDevices();
-
-                // NEW: Start input taps (rolling RAM buffer)
-                SetupInputTaps();
-
-                // push current pad LED states out on startup
-                SyncAllPadLeds();
-            };
-
-            Closing += (_, __) =>
-            {
-                // NEW: stop capture early so the process can exit cleanly
-                TearDownInputTaps();
-                TearDownMidi();
+                if (IsVisible) Keyboard.Focus(this);
+                StartBackgroundServices();
             };
 
 
