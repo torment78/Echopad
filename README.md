@@ -44,7 +44,7 @@ dotnet build Echopad.slnx -c Release
 dotnet run --project Echopad.Tests -c Release
 ```
 
-Build a tested, self-contained unsigned package with Inno Setup 6 installed:
+Build a tested, self-contained unsigned package with Inno Setup 6.6 or newer installed:
 
 ```powershell
 ./scripts/Build-UnsignedRelease.ps1 -Version 1.1.0-dev.20260929.3

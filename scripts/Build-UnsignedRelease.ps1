@@ -18,6 +18,8 @@ try {
     Copy-Item -LiteralPath (Join-Path $repoRoot 'README.md') -Destination $publishDir
     Copy-Item -LiteralPath (Join-Path $repoRoot 'docs') -Destination (Join-Path $publishDir 'docs') -Recurse
     Copy-Item -LiteralPath (Join-Path $repoRoot 'graphics') -Destination (Join-Path $publishDir 'graphics') -Recurse
+    New-Item -ItemType Directory -Path (Join-Path $publishDir 'Echopad.Tests') | Out-Null
+    Copy-Item -LiteralPath (Join-Path $repoRoot 'Echopad.Tests/README.md') -Destination (Join-Path $publishDir 'Echopad.Tests/README.md')
     $zip = Join-Path $releaseDir "EchoPad-$Version-win-x64-unsigned.zip"
     Compress-Archive -Path (Join-Path $publishDir '*') -DestinationPath $zip
     if (!$SkipInstaller) {
