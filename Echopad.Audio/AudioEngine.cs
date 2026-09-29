@@ -65,6 +65,13 @@ namespace Echopad.Audio
             StopPad(pad);
 
             var endpoint = previewToMonitor ? out2 : out1;
+            if (!endpoint.Enabled)
+            {
+                pad.IsBusy = false;
+                pad.State = PadState.Loaded;
+                PadPlaybackEnded?.Invoke(pad.Index);
+                return;
+            }
 
             Debug.WriteLine($"[AudioEngine] Play pad={pad.Index} preview={previewToMonitor} mode={endpoint.Mode} clip='{pad.ClipPath}' start={pad.StartMs} end={pad.EndMs}");
 

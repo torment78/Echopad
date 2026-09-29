@@ -70,8 +70,7 @@ namespace Echopad.App.UI.Converters
                     state = PadState.Loaded;
             }
 
-            // IMPORTANT: You said you DO NOT want global pad colors.
-            // So only per-pad overrides for Active/Running, and global Armed input colors.
+            // Recorded and playing pads use their individual state colors.
             string hex = state switch
             {
                 PadState.Playing =>
@@ -90,7 +89,14 @@ namespace Echopad.App.UI.Converters
             };
 
             if (string.Equals(mode, "Background", StringComparison.OrdinalIgnoreCase))
-                return MakeTintedSurface(hex);
+            {
+                var surface = Echopad.App.Services.AppearanceTheme.ColorAt(gs.Appearance?.PadHue ?? 215, .25, .14);
+                return state is PadState.Loaded or PadState.Playing
+                    ? MakeTintedSurface(surface, hex, state == PadState.Playing
+                        ? gs.Appearance?.PlayingFillIntensity ?? 75
+                        : gs.Appearance?.LoadedFillIntensity ?? 55)
+                    : new SolidColorBrush(surface);
+            }
 
             if (string.Equals(mode, "Glow", StringComparison.OrdinalIgnoreCase))
                 return MakeGlowBrush(hex);
@@ -140,24 +146,22 @@ namespace Echopad.App.UI.Converters
             }
         }
 
-        // Background tint: subtle gradient
-        private static Brush MakeTintedSurface(string hex)
+        // State colors cover the whole pad, with enough contrast to distinguish a
+        // saved clip from an empty/listening pad without overpowering its label.
+        private static Brush MakeTintedSurface(Color surface, string hex, double intensity)
         {
             try
             {
                 var c = (Color)ColorConverter.ConvertFromString(hex);
+                Color Mix(double amount) => Color.FromRgb(
+                    (byte)Math.Round(surface.R * (1 - amount) + c.R * amount),
+                    (byte)Math.Round(surface.G * (1 - amount) + c.G * amount),
+                    (byte)Math.Round(surface.B * (1 - amount) + c.B * amount));
 
-                byte dR = (byte)(c.R * 0.20);
-                byte dG = (byte)(c.G * 0.20);
-                byte dB = (byte)(c.B * 0.20);
-
-                byte tR = (byte)(c.R * 0.28);
-                byte tG = (byte)(c.G * 0.28);
-                byte tB = (byte)(c.B * 0.28);
-
-                var top = Color.FromArgb(255, tR, tG, tB);
-                var mid = Color.FromArgb(255, dR, dG, dB);
-                var bot = Color.FromArgb(255, (byte)(dR * 0.85), (byte)(dG * 0.85), (byte)(dB * 0.85));
+                double amount = Math.Clamp(intensity / 100, 0, 1) * .62;
+                var top = Mix(amount * 1.23);
+                var mid = Mix(amount);
+                var bot = Mix(amount * .82);
 
                 var g = new LinearGradientBrush
                 {
@@ -175,7 +179,7 @@ namespace Echopad.App.UI.Converters
             }
             catch
             {
-                return Brushes.Transparent;
+                return new SolidColorBrush(surface);
             }
         }
     }

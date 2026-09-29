@@ -5,6 +5,7 @@ namespace Echopad.Core
 {
     public sealed class GlobalSettings
     {
+        public AppearanceSettings Appearance { get; set; } = new();
         // =========================================================
         // OLD (keep for backward compatibility)
         // =========================================================
@@ -80,6 +81,7 @@ namespace Echopad.Core
         // =========================================================
         public void EnsureCompatibility()
         {
+            Appearance ??= new();
             // -------- Inputs --------
             if (Input1 == null) Input1 = new InputEndpointSettings();
             if (Input2 == null) Input2 = new InputEndpointSettings();

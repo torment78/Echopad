@@ -1,7 +1,8 @@
-﻿<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
                     xmlns:core="clr-namespace:Echopad.Core;assembly=Echopad.Core"
                     xmlns:ui="clr-namespace:Echopad.App.UI.Behaviors"
+                    xmlns:controls="clr-namespace:Echopad.App.UI.Controls"
                     xmlns:conv="clr-namespace:Echopad.App.UI.Converters">
 
     <!-- Converter used by pad template -->
@@ -14,14 +15,14 @@
         <Setter Property="Height" Value="40"/>
         <Setter Property="MinWidth" Value="110"/>
         <Setter Property="Padding" Value="14,0"/>
-        <Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}"/>
+        <Setter Property="Foreground" Value="{DynamicResource HeaderButtonTextBrush}"/>
 
         <!-- OLD (blue hardcode) -->
         <!-- <Setter Property="Background" Value="#131B2A"/> -->
         <!-- <Setter Property="BorderBrush" Value="#2C3A4E"/> -->
 
         <!-- NEW: route through theme resources -->
-        <Setter Property="Background" Value="{DynamicResource ControlBgBrush}"/>
+        <Setter Property="Background" Value="{DynamicResource HeaderButtonBrush}"/>
         <Setter Property="BorderBrush" Value="{DynamicResource ControlBorderBrush}"/>
 
         <Setter Property="BorderThickness" Value="1"/>
@@ -100,7 +101,7 @@
         <Setter Property="BorderThickness" Value="1"/>
         <Setter Property="BorderBrush" Value="{DynamicResource ControlBorderBrush}"/>
 
-        <Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}"/>
+        <Setter Property="Foreground" Value="{DynamicResource PadTextBrush}"/>
         <Setter Property="FontSize" Value="18"/>
         <Setter Property="FontWeight" Value="Bold"/>
         <Setter Property="Cursor" Value="Hand"/>
@@ -142,6 +143,7 @@
                             </Border.Background>
 
                             <Grid>
+                                <controls:PadArtwork Graphics="{Binding Graphics}" State="{Binding State}" Margin="1" IsHitTestVisible="False"/>
                                 <!-- INNER HAIRLINE — NO MORE THICK WHITE -->
                                 <Border CornerRadius="13"
                                         Margin="2"
@@ -178,7 +180,7 @@
                                                TextAlignment="Center"
                                                FontSize="16"
                                                FontWeight="SemiBold"
-                                               Foreground="{DynamicResource PrimaryTextBrush}"
+                                               Foreground="{DynamicResource PadTextBrush}"
                                                LineStackingStrategy="BlockLineHeight"
                                                LineHeight="18"
                                                MaxHeight="54"
@@ -204,7 +206,7 @@
                                                FontWeight="Bold"
                                                HorizontalAlignment="Center"
                                                VerticalAlignment="Center"
-                                               Foreground="{DynamicResource PrimaryTextBrush}">
+                                               Foreground="{DynamicResource PadTextBrush}">
                                         <TextBlock.Style>
                                             <Style TargetType="TextBlock">
                                                 <Setter Property="Visibility" Value="Collapsed"/>
@@ -238,7 +240,7 @@
                                                Text="{Binding TotalSecText}"
                                                FontSize="12"
                                                FontWeight="SemiBold"
-                                               Foreground="{DynamicResource PrimaryTextBrush}"
+                                               Foreground="{DynamicResource PadTextBrush}"
                                                Opacity="0.85"
                                                HorizontalAlignment="Left"
                                                VerticalAlignment="Top"/>
@@ -247,7 +249,7 @@
                                                Text="{Binding PlayheadSecText}"
                                                FontSize="12"
                                                FontWeight="SemiBold"
-                                               Foreground="{DynamicResource PrimaryTextBrush}"
+                                               Foreground="{DynamicResource PadTextBrush}"
                                                Opacity="0.85"
                                                HorizontalAlignment="Right"
                                                VerticalAlignment="Top"/>
@@ -281,7 +283,7 @@
                                             <TextBlock Text="{Binding StartMs}"
                                                        FontSize="12"
                                                        FontWeight="SemiBold"
-                                                       Foreground="{DynamicResource PrimaryTextBrush}"
+                                                       Foreground="{DynamicResource PadTextBrush}"
                                                        HorizontalAlignment="Left"
                                                        VerticalAlignment="Bottom"
                                                        Opacity="0.85"/>
@@ -293,11 +295,13 @@
                                                 Padding="6"
                                                 ToolTip="End trim (ms) - hover + wheel"
                                                 ui:PadTrimWheelBehavior.Target="End"
-                                                ui:PadTrimWheelBehavior.IsActive="{Binding DataContext.IsEditMode, RelativeSource={RelativeSource AncestorType=Window}}">
+                                                ui:PadTrimWheelBehavior.IsActive="{Binding DataContext.IsEditMode, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                ui:PadTrimWheelBehavior.SettingsService="{Binding SettingsService, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                ui:PadTrimWheelBehavior.GlobalSettings="{Binding GlobalSettings, RelativeSource={RelativeSource AncestorType=Window}}">
                                             <TextBlock Text="{Binding EndMs}"
                                                        FontSize="12"
                                                        FontWeight="SemiBold"
-                                                       Foreground="{DynamicResource PrimaryTextBrush}"
+                                                       Foreground="{DynamicResource PadTextBrush}"
                                                        HorizontalAlignment="Right"
                                                        VerticalAlignment="Bottom"
                                                        Opacity="0.85"/>
@@ -308,6 +312,7 @@
                         </Border>
 
                         <!-- GLOW RINGS (brush from converter) -->
+                        <Grid Opacity="{DynamicResource PadOutlineOpacity}" IsHitTestVisible="False">
                         <Border x:Name="GlowRing"
                                 CornerRadius="14"
                                 BorderThickness="2"
@@ -345,6 +350,8 @@
                                 </MultiBinding>
                             </Border.BorderBrush>
                         </Border>
+
+                        </Grid>
 
                         <!-- HOLD-TO-CLEAR RING -->
                         <Border x:Name="HoldClearRing"
@@ -424,7 +431,9 @@
 
                         <!-- CTRL COPY VISUALS (ClipMod) -->
                         <DataTrigger Binding="{Binding ClipMod}" Value="{x:Static core:ClipMod.CopySource}">
-                            <Setter TargetName="PadBody" Property="BorderBrush" Value="#FF3B3B"/>
+                            <Setter TargetName="PadBody" Property="BorderBrush" Value="#FFE06A"/>
+                            <Setter TargetName="GlowRing" Property="BorderBrush" Value="#FFE06A"/>
+                            <Setter TargetName="GlowRing2" Property="BorderBrush" Value="#FFE06A"/>
                             <Setter TargetName="GlowRing" Property="Opacity" Value="0.65"/>
                             <Setter TargetName="GlowRing" Property="Effect">
                                 <Setter.Value>
@@ -435,6 +444,8 @@
 
                         <DataTrigger Binding="{Binding ClipMod}" Value="{x:Static core:ClipMod.CopiedTarget}">
                             <Setter TargetName="PadBody" Property="BorderBrush" Value="#FFD24A"/>
+                            <Setter TargetName="GlowRing" Property="BorderBrush" Value="#FFD24A"/>
+                            <Setter TargetName="GlowRing2" Property="BorderBrush" Value="#FFD24A"/>
                             <Setter TargetName="GlowRing" Property="Opacity" Value="0.55"/>
                         </DataTrigger>
 
@@ -457,29 +468,29 @@
 
                         <!-- LOADED -->
                         <DataTrigger Binding="{Binding State}" Value="{x:Static core:PadState.Loaded}">
-                            <Setter TargetName="GlowRing" Property="Opacity" Value="0.18"/>
-                            <Setter TargetName="GlowRing2" Property="Opacity" Value="0.10"/>
+                            <Setter TargetName="GlowRing" Property="Opacity" Value="0.85"/>
+                            <Setter TargetName="GlowRing2" Property="Opacity" Value="0.45"/>
                         </DataTrigger>
 
                         <!-- PLAYING -->
                         <DataTrigger Binding="{Binding State}" Value="{x:Static core:PadState.Playing}">
-                            <Setter TargetName="GlowRing" Property="Opacity" Value="0.45"/>
-                            <Setter TargetName="GlowRing2" Property="Opacity" Value="0.30"/>
+                            <Setter TargetName="GlowRing" Property="Opacity" Value="1"/>
+                            <Setter TargetName="GlowRing2" Property="Opacity" Value="0.60"/>
                             <Setter TargetName="Scanlines" Property="Opacity" Value="0.10"/>
                         </DataTrigger>
 
                         <!-- HOVER -->
                         <Trigger Property="IsMouseOver" Value="True">
-                            <Setter TargetName="GlowRing" Property="Opacity" Value="0.55"/>
-                            <Setter TargetName="GlowRing2" Property="Opacity" Value="0.28"/>
+                            <Setter TargetName="GlowRing" Property="Opacity" Value="1"/>
+                            <Setter TargetName="GlowRing2" Property="Opacity" Value="0.60"/>
                             <Setter TargetName="GlassSheen" Property="Opacity" Value="0.22"/>
                             <Setter TargetName="Scanlines" Property="Opacity" Value="0.14"/>
                         </Trigger>
 
                         <!-- PRESSED -->
                         <Trigger Property="IsPressed" Value="True">
-                            <Setter TargetName="GlowRing" Property="Opacity" Value="0.75"/>
-                            <Setter TargetName="GlowRing2" Property="Opacity" Value="0.40"/>
+                            <Setter TargetName="GlowRing" Property="Opacity" Value="1"/>
+                            <Setter TargetName="GlowRing2" Property="Opacity" Value="0.70"/>
                             <Setter TargetName="GlassSheen" Property="Opacity" Value="0.12"/>
                             <Setter TargetName="Scanlines" Property="Opacity" Value="0.18"/>
                             <Setter TargetName="PadBody" Property="RenderTransform">

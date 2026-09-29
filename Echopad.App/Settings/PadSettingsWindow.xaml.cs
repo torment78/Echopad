@@ -1,4 +1,4 @@
-﻿using Echopad.App.Services;
+using Echopad.App.Services;
 using Echopad.Core;
 using Microsoft.Win32;
 using NAudio.CoreAudioApi;
@@ -34,7 +34,7 @@ namespace Echopad.App.Settings
             _vm = vm;
             DataContext = _vm;
 
-            _previewGlobal = new SettingsService().Load();
+            _previewGlobal = vm.GlobalSettings;
 
             EnsurePreviewTimerWired();
 
@@ -276,123 +276,20 @@ namespace Echopad.App.Settings
         private void LearnMidiPad_Click(object sender, RoutedEventArgs e)
         {
             if (_isLearningMidi) return;
-
-            _isLearningMidi = true;
-            _vm.IsMidiLearning = true;
-
-            if (sender is Button b)
-                b.IsEnabled = false;
-
-            _vm.MidiTriggerRaw = "Learning...";
-
-            var mw = Application.Current?.MainWindow;
-            if (mw == null)
+            if (Application.Current?.MainWindow is not MainWindow main || !main.HasMidiInput)
             {
-                EndLearnUi(sender as Button);
-                _vm.MidiTriggerRaw = "Learn:Failed (no MainWindow)";
+                MessageBox.Show(this, "Select an available MIDI input in Settings first.", "MIDI input");
                 return;
             }
-
-            Action<string> onLearned = bind =>
+            _isLearningMidi = true;
+            _vm.IsMidiLearning = true;
+            main.BeginMidiLearn(bind =>
             {
-                Dispatcher.Invoke(() =>
-                {
-                    _vm.MidiTriggerRaw = bind;
-                    EndLearnUi(sender as Button);
-                }, DispatcherPriority.Send);
-            };
-
-            Action onCanceled = () =>
-            {
-                Dispatcher.Invoke(() =>
-                {
-                    if (string.Equals(_vm.MidiTriggerRaw, "Learning...", StringComparison.OrdinalIgnoreCase))
-                        _vm.MidiTriggerRaw = "Learn:Canceled";
-                    EndLearnUi(sender as Button);
-                }, DispatcherPriority.Send);
-            };
-
-            if (!TryInvokeMainWindowMidiLearn((Window)mw, onLearned, onCanceled))
-            {
-                EndLearnUi(sender as Button);
-                _vm.MidiTriggerRaw = "Learn:Failed (no learn hook)";
-            }
-        }
-
-        private void EndLearnUi(Button? learnButton)
-        {
-            _isLearningMidi = false;
-            _vm.IsMidiLearning = false;
-
-            if (learnButton != null)
-                learnButton.IsEnabled = true;
-        }
-
-        private static bool TryInvokeMainWindowMidiLearn(Window mainWindow, Action<string> onLearned, Action onCanceled)
-        {
-            var t = mainWindow.GetType();
-            string[] names = { "BeginMidiLearn", "StartMidiLearn", "BeginLearnMidi", "StartLearnMidi" };
-
-            foreach (var name in names)
-            {
-                {
-                    var mi = t.GetMethod(name,
-                        BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic,
-                        null,
-                        new[] { typeof(Action<string>) },
-                        null);
-
-                    if (mi != null)
-                    {
-                        mi.Invoke(mainWindow, new object[] { onLearned });
-                        return true;
-                    }
-                }
-
-                {
-                    var mi = t.GetMethod(name,
-                        BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic,
-                        null,
-                        new[] { typeof(Action<string>), typeof(Action) },
-                        null);
-
-                    if (mi != null)
-                    {
-                        mi.Invoke(mainWindow, new object[] { onLearned, onCanceled });
-                        return true;
-                    }
-                }
-
-                {
-                    var mi = t.GetMethod(name,
-                        BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic,
-                        null,
-                        new[] { typeof(string), typeof(Action<string>) },
-                        null);
-
-                    if (mi != null)
-                    {
-                        mi.Invoke(mainWindow, new object[] { "Pad", onLearned });
-                        return true;
-                    }
-                }
-
-                {
-                    var mi = t.GetMethod(name,
-                        BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic,
-                        null,
-                        new[] { typeof(string), typeof(Action<string>), typeof(Action) },
-                        null);
-
-                    if (mi != null)
-                    {
-                        mi.Invoke(mainWindow, new object[] { "Pad", onLearned, onCanceled });
-                        return true;
-                    }
-                }
-            }
-
-            return false;
+                if (!_isLearningMidi) return;
+                _vm.MidiTriggerRaw = bind;
+                _isLearningMidi = false;
+                _vm.IsMidiLearning = false;
+            });
         }
 
         // =========================================================
@@ -806,11 +703,13 @@ namespace Echopad.App.Settings
 
         private void StartOrResumePreview(string path, double startMs, double endMs)
         {
+            if (!_previewGlobal.Out2.Enabled) return;
             EnsurePreviewTimerWired();
             EnsurePreviewReader(path);
 
             _userPaused = false;
             _autoStopping = false;
+            _ignoreNextStoppedAfterPause = false;
 
             // If the last run truly ended at OUT, restart at IN
             if (_endedNaturally)
@@ -980,9 +879,13 @@ namespace Echopad.App.Settings
             try { _previewOut?.Dispose(); } catch { }
             _previewOut = null;
 
-            var monitorId = _previewGlobal?.MonitorOutDeviceId;
+            var monitorId = _previewGlobal.Out2.LocalDeviceId;
 
-            if (!string.IsNullOrWhiteSpace(monitorId))
+            if (_previewGlobal.Out2.Mode == AudioEndpointMode.Vban)
+            {
+                _previewOut = new Echopad.Audio.Vban.VbanWavePlayer(_previewGlobal.Out2.Vban);
+            }
+            else if (!string.IsNullOrWhiteSpace(monitorId))
             {
                 try
                 {
@@ -1005,8 +908,10 @@ namespace Echopad.App.Settings
                 _previewOut = new WaveOutEvent();
             }
 
+            var currentOutput = _previewOut;
             _previewOut.PlaybackStopped += (_, __) =>
             {
+                if (!ReferenceEquals(_previewOut, currentOutput)) return;
                 // Ignore the stop callback caused by Pause() on some drivers
                 if (_ignoreNextStoppedAfterPause)
                 {
@@ -1098,7 +1003,10 @@ namespace Echopad.App.Settings
 
         protected override void OnClosed(EventArgs e)
         {
-            // NEW: one more safety stop in case window is closed via [X]
+            if (_isLearningMidi) (Application.Current?.MainWindow as MainWindow)?.CancelMidiLearn();
+            _isLearningMidi = false;
+            _vm.IsMidiLearning = false;
+            // Stop preview when the window closes.
             StopPreviewBeforeClose();
             try { _uiBlock?.Dispose(); } catch { }
             _uiBlock = null;

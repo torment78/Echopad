@@ -213,6 +213,8 @@ namespace Echopad.Core.Controllers
             if (ReferenceEquals(_copySource, clicked))
                 return;
 
+            if (clicked.IsBusy && clicked.State != PadState.Playing) return;
+            if (clicked.State == PadState.Playing) Stop(clicked);
             CopyPad(_copySource, clicked);
 
             clicked.ClipMod = ClipMod.CopiedTarget;
@@ -227,6 +229,11 @@ namespace Echopad.Core.Controllers
             dst.ClipDuration = src.ClipDuration;
             dst.StartMs = src.StartMs;
             dst.EndMs = src.EndMs;
+            dst.GainDb = src.GainDb;
+            dst.PadName = src.PadName;
+            dst.Graphics = src.Graphics.Clone();
+            dst.PlayheadMs = src.StartMs;
+            dst.IsBusy = false;
 
             dst.State = !string.IsNullOrWhiteSpace(dst.ClipPath)
                 ? PadState.Loaded

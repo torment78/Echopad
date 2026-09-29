@@ -7,6 +7,12 @@ namespace Echopad.Core
     public sealed class PadModel : INotifyPropertyChanged
     {
         public int Index { get; }
+        private PadGraphicsSettings _graphics = new();
+        public PadGraphicsSettings Graphics
+        {
+            get => _graphics;
+            set { _graphics = value ?? new(); OnPropertyChanged(); }
+        }
 
         public PadModel(int index) => Index = index;
         public bool HasPadName => !string.IsNullOrWhiteSpace(PadName);

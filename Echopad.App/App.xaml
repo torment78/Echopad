@@ -64,6 +64,9 @@
             </Style>
 
             <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="UI/Styles/SettingsControls.xaml"/>
+                <ResourceDictionary Source="UI/Styles/ProfileMenu.xaml"/>
+                <ResourceDictionary Source="UI/Styles/RoundedSlider.xaml"/>
                 <!-- Flat GroupBox template + any other control fixes -->
                 <ResourceDictionary Source="UI/Styles/Controls.Gray.xaml"/>
 

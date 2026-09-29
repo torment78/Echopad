@@ -5,7 +5,7 @@
         Width="440" Height="210"
         WindowStartupLocation="CenterOwner"
         ResizeMode="NoResize"
-        KeyDown="Window_KeyDown"
+        PreviewKeyDown="Window_KeyDown" PreviewKeyUp="Window_KeyUp"
         Background="{DynamicResource AppBackgroundBrush}"
         Foreground="{DynamicResource PrimaryTextBrush}">
 
@@ -38,7 +38,7 @@
         <StackPanel Grid.Row="5" Orientation="Horizontal" HorizontalAlignment="Right">
             <Button Content="Clear" Width="90" Margin="0,0,10,0" Click="Clear_Click"/>
             <Button Content="Cancel" Width="90" Margin="0,0,10,0" Click="Cancel_Click"/>
-            <Button Content="OK" Width="90" IsDefault="True" Click="Ok_Click"/>
+            <Button Content="Use shortcut" Width="110" Click="Ok_Click"/>
         </StackPanel>
     </Grid>
 </Window>

@@ -1,183 +1,31 @@
-# 🎛️ Echopad
+# EchoPad overview
 
-Echopad is a real-time audio pad sampler designed for **live performance, streaming and rapid audio interaction**.
+EchoPad is a Windows 4×4 audio pad sampler with 16 profiles, two rolling capture inputs, a main output and a separate monitor output. It uses local audio devices or VBAN network audio.
 
-It focuses on speed, predictability and minimal UI friction — no timelines, no tracks, no DAW-style complexity.
+![Main pad grid](images/current/main-states.png)
 
----
+## Pad behavior
 
-## 🧠 What Echopad Is
+Empty pads have no clip. Echo pads with no clip are armed and buffer their selected input. Triggering an armed Echo pad commits the last 15 seconds to a WAV file; triggering a loaded pad starts playback. Playing pads use their running color and optional playing artwork. Each pad keeps its audio, trim, name, gain, source settings, keyboard/MIDI trigger, MIDI LED feedback and graphics.
 
-Echopad is built around a **4×4 pad grid**, where each pad represents an independent audio slot.
+Run mode is for capture and playback. Edit mode provides trimming, pad setup and Ctrl-click copying. Private previews use the monitor output configured in Settings.
 
-Each pad can:
-- Play a loaded audio file
-- Capture live audio using Echo mode
-- Be triggered via mouse, keyboard or MIDI
-- Provide MIDI LED feedback
-- Store its own trim, input source and behavior
+## This development release
 
----
+The interface now has seven global settings tabs and three pad settings tabs. It includes profile names/search, a Shift-click profile picker, improved modifier shortcuts and CC handling, stronger loaded/playing colors, global hue and intensity controls, stopped/playing PNG artwork with Fit/Crop and opacity, and a manual GitHub update checker.
 
-## 🖥️ Main Interface
+![Pad graphics editor](images/current/pad-Graphics.png)
 
-![Pad grid overview](images/pad-grid.png)
+Read the [illustrated setup and menu guide](SETUP.md) for every tab and control, or the [release notes](RELEASE-NOTES.md) for validation details.
 
-The interface consists of:
-- **Settings button** – global configuration
-- **Edit toggle** – switches between Run Mode and Edit Mode
-- **4×4 Pad Grid** – the main interaction surface
+## Routing and storage
 
----
+Each input/output route can use Local or VBAN, or be disabled. Local and VBAN cannot run simultaneously on the same route. Other routes can use different transports.
 
-## 🔄 Pad States
+Settings and profiles are stored under `%LOCALAPPDATA%\Echopad`, along with managed PNG copies in `PadImages`. Captures are saved under Documents `Echopad\Captures`; imported audio remains referenced at its source path. See the [backup notes](SETUP.md#saved-data-and-backups) before moving data between machines.
 
-Pads are state-driven.  
-Visuals, behavior and MIDI feedback all follow the current pad state.
+## Development
 
-- **Empty** – no audio, no echo
-- **Armed** – waiting to capture live audio
-- **Loaded** – audio ready to play
-- **Playing** – audio currently playing
+This is the normal EchoPad application. The planned VST endpoint edition is separate future work. This release is unsigned and published as a prerelease.
 
-This state model keeps Echopad predictable during live use.
-
----
-
-## ✍️ Edit Mode vs Run Mode
-
-### Run Mode
-- Pads trigger audio
-- MIDI bindings are active
-- Intended for live performance
-
-### Edit Mode
-- Assign audio files
-- Enable Echo Mode or Drop Folder Mode
-- Adjust trims
-- Open per-pad settings
-
-Configuration changes are only possible in Edit Mode.
-
----
-
-## 🎙️ Echo Mode (Live Capture)
-
-Echo Mode continuously buffers live audio from an input source.
-
-When an **armed, empty pad** is triggered:
-- The last buffered audio is written to disk
-- The file is assigned to the pad
-- The pad instantly becomes Loaded
-
-This allows:
-- Instant replays
-- Voice capture
-- Live stream sound effects
-- Reactive sampling
-
-Echo Mode works with both **local audio devices** and **network-based audio sources** (see VBAN below).
-
----
-
-## 🌐 VBAN Audio Routing (Network Audio)
-
-Echopad supports **VBAN audio streaming**, allowing audio to be routed **over the network** instead of using only local devices.
-
-VBAN can be used on:
-- **Audio Inputs** (VBAN Receive)
-- **Audio Outputs** (VBAN Transmit)
-
-This makes Echopad suitable for:
-- Multi-PC streaming setups
-- Remote audio capture
-- Network-based monitoring
-- Routing audio between applications or machines
-
-### VBAN Inputs
-An input can be set to **VBAN** instead of Local.
-
-In this mode:
-- Echopad listens on a UDP port
-- Receives audio from a VBAN sender
-- Feeds the stream into Echo Mode and live meters
-
-### VBAN Outputs
-An output can be set to **VBAN** instead of Local.
-
-In this mode:
-- Pad playback is streamed as VBAN audio
-- Audio is sent in real time over UDP
-- Sample rate and channel count follow the source material
-
-Local and VBAN routing can be mixed freely:
-- Local input → VBAN output
-- VBAN input → Local output
-- VBAN input → VBAN output
-
-Switching modes is handled live and safely.
-
----
-
-## 📁 Drop Folder Mode
-
-Pads can be configured to watch a folder.
-
-When a new audio file appears:
-- It is automatically assigned to the next eligible pad
-
-Useful for:
-- Drag-and-drop workflows
-- External automation
-- Companion tools
-
----
-
-## 🎹 MIDI Support
-
-Echopad supports:
-- MIDI input (Notes, CC, Program Change)
-- Per-pad MIDI learn
-- Global MIDI actions
-- MIDI output for LED feedback
-
-Each pad can reflect:
-- Active state
-- Playing state
-- Cleared state
-- Armed (input-specific LED values)
-
-This allows tight integration with MIDI controllers.
-
----
-
-## 💾 Settings & Portability
-
-All settings are stored in a single file:
-
-echopad.settings.json
-
-
-Key properties:
-- Stored next to the executable
-- No registry usage
-- Fully portable
-- Safe to back up or move between machines
-
----
-
-## 📘 Documentation
-
-- **SETUP.md** – full setup and usage guide
-- **README.md** – overview and concepts
-
----
-
-## 🚧 Status
-
-- Core functionality stable
-- VBAN routing fully implemented and tested
-- Actively developed
-- Installer planned (Inno Setup)
-
-Echopad is designed to grow without breaking existing workflows.
+See the [repository README](../README.md) for downloads, build commands and tests.

@@ -40,6 +40,8 @@ namespace Echopad.Audio
         private int _requestedRollingSeconds;
 
         public RollingAudioBuffer? Buffer { get; private set; }
+        private long _lastSamplesUtcTicks;
+        public bool HasRecentSamples => DateTime.UtcNow.Ticks - System.Threading.Interlocked.Read(ref _lastSamplesUtcTicks) < TimeSpan.TicksPerSecond / 2;
 
         // =========================================================
         // OLD ctor (kept)
@@ -62,6 +64,8 @@ namespace Echopad.Audio
         {
             Stop();
 
+            if (_endpoint?.Enabled == false) { Buffer = null; return; }
+
             _requestedRollingSeconds = Math.Max(1, rollingSeconds);
 
             var mode = _endpoint?.Mode ?? AudioEndpointMode.Local;
@@ -80,19 +84,15 @@ namespace Echopad.Audio
         // =========================================================
         private void StartWasapi(int rollingSeconds)
         {
-            if (string.IsNullOrWhiteSpace(_deviceIdRaw))
-            {
-                Debug.WriteLine("[Tap] No device selected.");
-                return;
-            }
-
             try
             {
-                bool forceLoopback = _deviceIdRaw.StartsWith("loop:", StringComparison.OrdinalIgnoreCase);
+                bool forceLoopback = _deviceIdRaw?.StartsWith("loop:", StringComparison.OrdinalIgnoreCase) == true;
 
-                var endpointId = NormalizeDeviceId(_deviceIdRaw);
-                var enumerator = new MMDeviceEnumerator();
-                _device = enumerator.GetDevice(endpointId);
+                var endpointId = NormalizeDeviceId(_deviceIdRaw ?? "");
+                using var enumerator = new MMDeviceEnumerator();
+                _device = string.IsNullOrWhiteSpace(endpointId)
+                    ? enumerator.GetDefaultAudioEndpoint(DataFlow.Capture, Role.Multimedia)
+                    : enumerator.GetDevice(endpointId);
 
                 Debug.WriteLine($"[Tap] Using endpoint: {_device.FriendlyName} | Flow={_device.DataFlow} | ForceLoop={forceLoopback}");
 
@@ -177,6 +177,7 @@ namespace Echopad.Audio
                 }
 
                 Buffer.AddSamples(samples, sampleCount);
+                System.Threading.Interlocked.Exchange(ref _lastSamplesUtcTicks, DateTime.UtcNow.Ticks);
             }
             catch (Exception ex)
             {
@@ -229,6 +230,7 @@ namespace Echopad.Audio
 
         private void Capture_DataAvailable(object? sender, WaveInEventArgs e)
         {
+            if (e.BytesRecorded > 0) System.Threading.Interlocked.Exchange(ref _lastSamplesUtcTicks, DateTime.UtcNow.Ticks);
             try
             {
                 if (Buffer == null || _waveFormat == null)

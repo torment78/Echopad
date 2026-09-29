@@ -6,6 +6,7 @@ namespace Echopad.Core
     // INPUT: Local capture or loopback, or VBAN RX
     public sealed class InputEndpointSettings
     {
+        public bool Enabled { get; set; } = true;
         public AudioEndpointMode Mode { get; set; } = AudioEndpointMode.Local;
 
         // Local
@@ -19,6 +20,7 @@ namespace Echopad.Core
     // OUTPUT: Local WASAPI render, or VBAN TX
     public sealed class OutputEndpointSettings
     {
+        public bool Enabled { get; set; } = true;
         public AudioEndpointMode Mode { get; set; } = AudioEndpointMode.Local;
 
         // Local

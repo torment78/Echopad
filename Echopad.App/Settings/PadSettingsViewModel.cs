@@ -10,7 +10,7 @@ using System.Text.RegularExpressions;
 
 namespace Echopad.App.Settings
 {
-    public sealed class PadSettingsViewModel : INotifyPropertyChanged
+    public sealed partial class PadSettingsViewModel : INotifyPropertyChanged
     {
         private readonly PadModel _pad;
         private readonly SettingsService _settings;
@@ -253,7 +253,7 @@ namespace Echopad.App.Settings
         }
         public string MidiLedActiveEntry
         {
-            get => !string.IsNullOrWhiteSpace(_padSettings.MidiLedActiveRaw)
+            get => !MidiLedActiveEnabled ? "OFF" : !string.IsNullOrWhiteSpace(_padSettings.MidiLedActiveRaw)
                 ? _padSettings.MidiLedActiveRaw!
                 : _midiLedActiveValue.ToString();
             set => ApplyLedEntry(value, kind: "Active");
@@ -284,14 +284,14 @@ namespace Echopad.App.Settings
         }
         public string MidiLedRunningEntry
         {
-            get => !string.IsNullOrWhiteSpace(_padSettings.MidiLedRunningRaw)
+            get => !MidiLedRunningEnabled ? "OFF" : !string.IsNullOrWhiteSpace(_padSettings.MidiLedRunningRaw)
                 ? _padSettings.MidiLedRunningRaw!
                 : _midiLedRunningValue.ToString();
             set => ApplyLedEntry(value, kind: "Running");
         }
         public string MidiLedClearEntry
         {
-            get => !string.IsNullOrWhiteSpace(_padSettings.MidiLedClearRaw)
+            get => !MidiLedClearEnabled ? "OFF" : !string.IsNullOrWhiteSpace(_padSettings.MidiLedClearRaw)
                 ? _padSettings.MidiLedClearRaw!
                 : _midiLedClearValue.ToString();
             set => ApplyLedEntry(value, kind: "Clear");
@@ -502,6 +502,8 @@ namespace Echopad.App.Settings
             // ✅ per-pad color overrides
             ps.UiActiveHex = UiActiveHex;
             ps.UiRunningHex = UiRunningHex;
+            ps.Graphics = _graphics.Clone();
+            _pad.Graphics = _graphics.Clone();
 
             _settings.Save(_global);
         }
@@ -525,6 +527,7 @@ namespace Echopad.App.Settings
         // =====================================================
         private void ApplyFromSettings(PadSettings ps)
         {
+            _graphics = ps.Graphics?.Clone() ?? new();
             ClipPath = ps.ClipPath;
             StartMs = ps.StartMs;
             EndMs = ps.EndMs;
@@ -608,6 +611,18 @@ namespace Echopad.App.Settings
         {
             text ??= "";
             text = text.Trim();
+
+            if (text.Length > 0)
+            {
+                bool enabled = !text.Equals("OFF", StringComparison.OrdinalIgnoreCase);
+                switch (kind)
+                {
+                    case "Active": MidiLedActiveEnabled = enabled; break;
+                    case "Running": MidiLedRunningEnabled = enabled; break;
+                    case "Clear": MidiLedClearEnabled = enabled; break;
+                }
+                if (!enabled) { OnPropertyChanged(GetEntryName(kind)); return; }
+            }
 
             // blank -> clear raw override (keep numeric)
             if (text.Length == 0)

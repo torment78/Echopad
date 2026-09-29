@@ -5,6 +5,7 @@ namespace Echopad.Core
     public sealed class PadSettings
     {
         public int Index { get; set; }
+        public PadGraphicsSettings Graphics { get; set; } = new();
 
         public string? ClipPath { get; set; }
         public string? PadName { get; set; }

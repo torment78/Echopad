@@ -10,7 +10,7 @@ using System.Windows.Threading;
 
 namespace Echopad.App.Settings
 {
-    public sealed class SettingsViewModel : INotifyPropertyChanged
+    public sealed partial class SettingsViewModel : INotifyPropertyChanged
     {
         private readonly SettingsService _settingsService;
 
@@ -64,8 +64,10 @@ namespace Echopad.App.Settings
             {
                 _autoSaveTimer.Stop();
                 if (_suppressAutoSave) return;
-                Save(); // uses current VM state
+                try { Save(); }
+                catch (Exception ex) { SaveStatus = "Could not save: " + ex.Message; OnPropertyChanged(nameof(SaveStatus)); }
             };
+            InitializePages();
         }
 
         // =========================================================
@@ -629,8 +631,20 @@ namespace Echopad.App.Settings
 
         public void Save()
         {
+            _autoSaveTimer.Stop();
+            if (!ValidateSettings(out var error)) { SaveStatus = error; OnPropertyChanged(nameof(SaveStatus)); return; }
             Settings.AudioFolders = new System.Collections.Generic.List<string>(AudioFolders);
+            // Pad captures and profile content are owned by the main window, not this editor.
+            Settings.Pads = _settingsService.Load().Pads;
+            Settings.Input1DeviceId = Settings.Input1.LocalDeviceId;
+            Settings.Input2DeviceId = Settings.Input2.LocalDeviceId;
+            Settings.MainOutDeviceId = Settings.Out1.LocalDeviceId;
+            Settings.MonitorOutDeviceId = Settings.Out2.LocalDeviceId;
+            SavePages();
             _settingsService.Save(Settings);
+            SaveStatus = "Saved · " + DateTime.Now.ToString("HH:mm:ss");
+            OnPropertyChanged(nameof(SaveStatus));
+            Saved?.Invoke();
         }
 
         private void LoadDeviceLists()
@@ -639,6 +653,8 @@ namespace Echopad.App.Settings
             AudioOutputs.Clear();
             MidiInputs.Clear();
             MidiOutputs.Clear();
+            MidiInputs.Add(new DeviceOption("", "None"));
+            MidiOutputs.Add(new DeviceOption("", "None"));
 
             var inCount = 0;
             foreach (var d in _audioProvider.GetInputDevices())

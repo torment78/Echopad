@@ -1,4 +1,4 @@
-﻿using Echopad.App.Services;
+using Echopad.App.Services;
 using Echopad.App.Settings;
 using Echopad.App.UI.Input;
 using Echopad.Audio;
@@ -98,6 +98,7 @@ namespace Echopad.App
                 if (_activeProfileIndex == value) return;
                 _activeProfileIndex = value;
                 OnPropertyChanged();
+                OnPropertyChanged(nameof(ActiveProfileName));
                 OnPropertyChanged(nameof(ActiveProfileDisplay)); // NEW: keep squircle text live
             }
         }
@@ -110,7 +111,7 @@ namespace Echopad.App
         // =====================================================
         // SETTINGS (persisted)
         // =====================================================
-        private readonly SettingsService _settingsService = new SettingsService();
+        private readonly SettingsService _settingsService;
         private GlobalSettings _globalSettings = new GlobalSettings();
         public SettingsService SettingsService => _settingsService;
 
@@ -128,7 +129,7 @@ namespace Echopad.App
         private DateTime _profileMidiModifierHeldUntilUtc = DateTime.MinValue;
         // one-shot MIDI learn callback (used by Settings windows)
         private Action<string>? _pendingMidiLearn;
-        private DateTime _lastLearnUtc = DateTime.MinValue;
+        private readonly MidiCcEdges _ccEdges = new();
 
         // debounce for MIDI actions/pads (prevents double fire)
         private DateTime _lastMidiActionUtc = DateTime.MinValue;
@@ -149,6 +150,7 @@ namespace Echopad.App
             {
                 if (ReferenceEquals(_globalSettings, value)) return;
                 _globalSettings = value;
+                AppearanceTheme.Apply(value.Appearance ?? new());
                 OnPropertyChanged();
             }
         }
@@ -193,8 +195,11 @@ namespace Echopad.App
         // last pad the user interacted with (click or key)
         private int _lastActivatedPadIndex = -1;
 
-        public MainWindow()
+        public MainWindow() : this(new SettingsService()) { }
+
+        public MainWindow(SettingsService settingsService)
         {
+            _settingsService = settingsService;
             InitializeComponent();
             _audio.PadPlaybackEnded += padIndex =>
             {
@@ -504,8 +509,13 @@ namespace Echopad.App
 
             SizeChanged += (_, __) => UpdatePadHostSquare();
 
-            PreviewKeyDown += MainWindow_PreviewKeyDown;
-            PreviewKeyUp += MainWindow_PreviewKeyUp;
+            Deactivated += (_, _) =>
+            {
+                _controller.SetCopyHeld(false);
+                _profileMidiModifierHeld = false;
+                if (DataContext is MainViewModel viewModel)
+                    foreach (var pad in viewModel.Pads) CancelHoldTimer(pad);
+            };
         }
         // NEW: Persist copied clip assignment right when CTRL-paste happens
         private void Controller_PadCopied(PadModel src, PadModel dst)
@@ -516,10 +526,14 @@ namespace Echopad.App
                 var ps = gs.GetOrCreatePad(dst.Index);
 
                 // Save ONLY what we want copied: file + trim
+                ps.PadName = dst.PadName;
                 ps.ClipPath = dst.ClipPath;
                 ps.StartMs = dst.StartMs;
                 ps.EndMs = dst.EndMs;
                 ps.GainDb = dst.GainDb;
+                ps.Graphics = dst.Graphics.Clone();
+                ps.UiActiveHex = gs.GetOrCreatePad(src.Index).UiActiveHex;
+                ps.UiRunningHex = gs.GetOrCreatePad(src.Index).UiRunningHex;
 
 
                 _settingsService.Save(gs);
@@ -631,11 +645,6 @@ namespace Echopad.App
         // =====================================================
         public void BeginMidiLearn(Action<string> onLearned)
         {
-            var now = DateTime.UtcNow;
-            if ((now - _lastLearnUtc).TotalMilliseconds < 150)
-                return;
-
-            _lastLearnUtc = now;
 
             _pendingMidiLearn = bind =>
             {
@@ -646,23 +655,7 @@ namespace Echopad.App
         // =====================================================
         // NEW: Live-apply settings while SettingsWindow is open
         // =====================================================
-        public void ApplySettingsLive()
-        {
-            // Reload from disk so we always apply what is actually saved
-            GlobalSettings = _settingsService.Load();
-
-            // Re-apply everything that depends on device IDs / folder paths
-            RefreshDropWatcher();
-            SetupMidiDevices();
-            SetupInputTaps();
-
-            // OLD:
-            // if (DataContext is MainViewModel mvm)
-            //     HydratePadsFromSettings(mvm);
-
-            // Update LEDs / visuals if needed
-            SyncAllPadLeds();
-        }
+        public void ApplySettingsLive() => ApplySettingsLiveCore();
 
 
         // NEW: called by SettingsWindow live-apply (debounced)
@@ -675,46 +668,24 @@ namespace Echopad.App
         private void SetupMidiDevices()
         {
             TearDownMidi();
-
-            // Always reload latest settings for MIDI device IDs
             GlobalSettings = _settingsService.Load();
-
-            if (string.IsNullOrWhiteSpace(GlobalSettings.MidiInDeviceId))
-                return;
-
-            if (!GlobalSettings.MidiInDeviceId.StartsWith("midi-in:", StringComparison.OrdinalIgnoreCase))
-                return;
-
-            if (!int.TryParse(GlobalSettings.MidiInDeviceId.Substring(8), out var index))
-                return;
-
-            try
+            if (GlobalSettings.MidiInDeviceId?.StartsWith("midi-in:", StringComparison.OrdinalIgnoreCase) == true &&
+                int.TryParse(GlobalSettings.MidiInDeviceId.Substring(8), out var index))
             {
-                _midiIn = new MidiIn(index);
-                _midiIn.MessageReceived += MidiIn_MessageReceived;
-                _midiIn.ErrorReceived += (_, __) => { };
-                _midiIn.Start();
+                try {
+                    _midiIn = new MidiIn(index);
+                    _midiIn.MessageReceived += MidiIn_MessageReceived;
+                    _midiIn.Start();
+                } catch (Exception ex) {
+                    Debug.WriteLine("[MIDI] Input unavailable: " + ex.Message);
+                    _midiIn?.Dispose(); _midiIn = null;
+                }
             }
-            catch (Exception ex)
-            {
-                Debug.WriteLine("[MIDI] Failed to open MidiIn: " + ex.Message);
-                TearDownMidi();
-                return;
-            }
-
-            if (!string.IsNullOrWhiteSpace(GlobalSettings.MidiOutDeviceId) &&
-                GlobalSettings.MidiOutDeviceId.StartsWith("midi-out:", StringComparison.OrdinalIgnoreCase) &&
+            if (GlobalSettings.MidiOutDeviceId?.StartsWith("midi-out:", StringComparison.OrdinalIgnoreCase) == true &&
                 int.TryParse(GlobalSettings.MidiOutDeviceId.Substring(9), out var outIndex))
             {
-                try
-                {
-                    _midiOut = new MidiOut(outIndex);
-                }
-                catch (Exception ex)
-                {
-                    Debug.WriteLine("[MIDI] Failed to open MidiOut: " + ex.Message);
-                    _midiOut = null;
-                }
+                try { _midiOut = new MidiOut(outIndex); }
+                catch (Exception ex) { Debug.WriteLine("[MIDI] Output unavailable: " + ex.Message); _midiOut = null; }
             }
         }
 
@@ -737,6 +708,8 @@ namespace Echopad.App
             _midiOut = null;
 
             _pendingMidiLearn = null;
+            _ccEdges.Clear();
+            _profileMidiModifierHeld = false;
         }
         private int GetArmedLedValueForPad(PadModel pad)
         {
@@ -748,30 +721,32 @@ namespace Echopad.App
         // =====================================================
         // INPUT TAP SETUP/TEARDOWN (Phase 1)
         // =====================================================
+        private string? _tapAConfiguration, _tapBConfiguration;
         private void SetupInputTaps()
         {
-            TearDownInputTaps();
             GlobalSettings = _settingsService.Load();
-
-            _tapA = GlobalSettings.Input1.Mode == AudioEndpointMode.Vban
-                ? new InputTapEngine(GlobalSettings.Input1)
-                : new InputTapEngine(GlobalSettings.Input1.LocalDeviceId);
-
-            _tapA.Start(RollingBufferSeconds);
-
-            _tapB = GlobalSettings.Input2.Mode == AudioEndpointMode.Vban
-                ? new InputTapEngine(GlobalSettings.Input2)
-                : new InputTapEngine(GlobalSettings.Input2.LocalDeviceId);
-
-            _tapB.Start(RollingBufferSeconds);
+            static string Configuration(InputEndpointSettings input) =>
+                System.Text.Json.JsonSerializer.Serialize(new { input.Enabled, input.Mode,
+                    Device = input.Mode == AudioEndpointMode.Local ? input.LocalDeviceId : null,
+                    Vban = input.Mode == AudioEndpointMode.Vban ? input.Vban : null });
+            var a = Configuration(GlobalSettings.Input1);
+            var b = Configuration(GlobalSettings.Input2);
+            if (_tapA == null || a != _tapAConfiguration)
+            {
+                _tapA?.Dispose();
+                _tapA = new InputTapEngine(GlobalSettings.Input1);
+                _tapA.Start(RollingBufferSeconds);
+                _tapAConfiguration = a;
+            }
+            if (_tapB == null || b != _tapBConfiguration)
+            {
+                _tapB?.Dispose();
+                _tapB = new InputTapEngine(GlobalSettings.Input2);
+                _tapB.Start(RollingBufferSeconds);
+                _tapBConfiguration = b;
+            }
         }
 
-
-
-
-        // =====================================================
-        // PUBLIC: live meter readout for Settings window
-        // =====================================================
         public float GetInputRms01(int inputIndex, int windowMs = 120)
         {
             var buf = (inputIndex == 2 ? _tapB : _tapA)?.Buffer;
@@ -803,7 +778,9 @@ namespace Echopad.App
 
         public float GetInputPeakDb(int inputIndex, int windowMs = 120)
         {
-            var buf = (inputIndex == 2 ? _tapB : _tapA)?.Buffer;
+            var tap = inputIndex == 2 ? _tapB : _tapA;
+            if (tap?.HasRecentSamples != true) return -90f;
+            var buf = tap.Buffer;
             if (buf == null) return -90f;
 
             return buf.GetPeakDbLastMs(windowMs);
@@ -826,8 +803,15 @@ namespace Echopad.App
                 var ev = e.MidiEvent;
                 if (ev == null) return;
                 // NEW: block feedback-loop MIDI (LED echoes, etc.)
-                if (DateTime.UtcNow < _ignoreMidiUntilUtc)
+                if (DateTime.UtcNow < _ignoreMidiUntilUtc && _pendingMidiLearn == null)
+                {
+                    if (ev is ControlChangeEvent released)
+                        Dispatcher.BeginInvoke(() => _ccEdges.ObserveSuppressedRelease(released.Channel, (int)released.Controller, released.ControllerValue));
+                    var modifier = TryParseMidiBind(GlobalSettings.ProfileSwitch.MidiModifierBind);
+                    if (modifier.HasValue && IsRelease(ev, modifier.Value))
+                        Dispatcher.BeginInvoke(() => _profileMidiModifierHeld = false);
                     return;
+                }
                 // 1) LEARN MODE (one-shot)
                 var learn = _pendingMidiLearn;
                 if (learn != null)
@@ -913,7 +897,7 @@ namespace Echopad.App
 
                     return $"CC:{cc.Channel}:{(int)cc.Controller}:{min}";
 
-                    return $"CC:{cc.Channel}:{(int)cc.Controller}:127";
+
 
                 case PatchChangeEvent pc:
                     return $"PC:{pc.Channel}:{pc.Patch}:1";
@@ -929,7 +913,7 @@ namespace Echopad.App
             if (string.IsNullOrWhiteSpace(text))
                 return null;
 
-            var parts = text.Trim().Split(':');
+            var parts = text.Split('|')[0].Trim().Split(':');
             if (parts.Length < 3)
                 return null;
 
@@ -1077,35 +1061,10 @@ namespace Echopad.App
         }
 
 
-        private static bool IsPress(NAudio.Midi.MidiEvent ev, MidiBind bind)
-        {
-            // “Press” means value/velocity meets threshold.
-            switch (bind.Kind)
-            {
-                case MidiBindKind.Note:
-                    if (ev is NoteOnEvent onEv)
-                        return onEv.Channel == bind.Channel &&
-                               onEv.NoteNumber == bind.Number &&
-                               onEv.Velocity >= bind.MinValue;
-                    return false;
+        private bool DoesEventTriggerBind(NAudio.Midi.MidiEvent ev, MidiBind bind)
+            => DoesEventMatchBind(ev, bind) && (bind.Kind != MidiBindKind.Cc || _ccEdges.Crossed(bind.Channel, bind.Number, bind.MinValue));
 
-                case MidiBindKind.Cc:
-                    if (ev is ControlChangeEvent cc)
-                        return cc.Channel == bind.Channel &&
-                               (int)cc.Controller == bind.Number &&
-                               cc.ControllerValue >= bind.MinValue;
-                    return false;
-
-                case MidiBindKind.Pc:
-                    // Program changes are one-shot presses.
-                    if (ev is PatchChangeEvent pc)
-                        return pc.Channel == bind.Channel && pc.Patch == bind.Number;
-                    return false;
-
-                default:
-                    return false;
-            }
-        }
+        private bool IsPress(NAudio.Midi.MidiEvent ev, MidiBind bind) => DoesEventTriggerBind(ev, bind);
 
         private static bool IsRelease(NAudio.Midi.MidiEvent ev, MidiBind bind)
         {
@@ -1113,6 +1072,8 @@ namespace Echopad.App
             switch (bind.Kind)
             {
                 case MidiBindKind.Note:
+                    if (ev is NoteEvent off && off.CommandCode == MidiCommandCode.NoteOff)
+                        return off.Channel == bind.Channel && off.NoteNumber == bind.Number;
                     if (ev is NoteOnEvent onEv)
                         return onEv.Channel == bind.Channel &&
                                onEv.NoteNumber == bind.Number &&
@@ -1123,7 +1084,7 @@ namespace Echopad.App
                     if (ev is ControlChangeEvent cc)
                         return cc.Channel == bind.Channel &&
                                (int)cc.Controller == bind.Number &&
-                               cc.ControllerValue <= 0;
+                               cc.ControllerValue < bind.MinValue;
                     return false;
 
                 default:
@@ -1136,6 +1097,8 @@ namespace Echopad.App
         // =====================================================
         private void HandleMidiEvent(NAudio.Midi.MidiEvent ev)
         {
+            if (ev is ControlChangeEvent controller) _ccEdges.Observe(controller.Channel, (int)controller.Controller, controller.ControllerValue);
+            if (UiInputBlocker.IsBlocked) return;
             // NEW: profile switching (modifier + slot)
             if (TryHandleProfileMidiSwitch(ev))
                 return;
@@ -1163,7 +1126,7 @@ namespace Echopad.App
             if (!string.IsNullOrWhiteSpace(_globalSettings.MidiBindToggleEdit))
             {
                 var b = TryParseMidiBind(_globalSettings.MidiBindToggleEdit);
-                if (b.HasValue && DoesEventMatchBind(ev, b.Value))
+                if (b.HasValue && DoesEventTriggerBind(ev, b.Value))
                 {
                     _lastMidiActionUtc = now;
 
@@ -1177,7 +1140,7 @@ namespace Echopad.App
             if (!string.IsNullOrWhiteSpace(_globalSettings.MidiBindOpenSettings))
             {
                 var b = TryParseMidiBind(_globalSettings.MidiBindOpenSettings);
-                if (b.HasValue && DoesEventMatchBind(ev, b.Value))
+                if (b.HasValue && DoesEventTriggerBind(ev, b.Value))
                 {
                     if ((now - _lastMidiActionUtc).TotalMilliseconds < 600)
                         return true;
@@ -1188,6 +1151,10 @@ namespace Echopad.App
                 }
             }
 
+            foreach (var (binding, action) in TrimBindings(true)) {
+                var parsed = TryParseMidiBind(binding);
+                if (parsed.HasValue && DoesEventTriggerBind(ev, parsed.Value)) { ApplyTrimShortcut(action); return true; }
+            }
             return false;
         }
 
@@ -1209,7 +1176,7 @@ namespace Echopad.App
                 if (!b.HasValue)
                     continue;
 
-                if (DoesEventMatchBind(ev, b.Value))
+                if (DoesEventTriggerBind(ev, b.Value))
                 {
                     // NEW: block pad triggers while dialogs are open
                     if (!IsPadsInputEnabled)
@@ -1242,7 +1209,7 @@ namespace Echopad.App
                         _profileMidiModifierHeld = true;
 
                         // Safety timeout (in case we never see a release)
-                        _profileMidiModifierHeldUntilUtc = DateTime.UtcNow.AddSeconds(3);
+                        _profileMidiModifierHeldUntilUtc = modBind.Value.Kind == MidiBindKind.Pc ? DateTime.UtcNow.AddSeconds(3) : DateTime.MaxValue;
                     }
                     else if (IsRelease(ev, modBind.Value))
                     {
@@ -1258,7 +1225,7 @@ namespace Echopad.App
             if (_profileMidiModifierHeld && DateTime.UtcNow > _profileMidiModifierHeldUntilUtc)
                 _profileMidiModifierHeld = false;
 
-            if (!_profileMidiModifierHeld)
+            if (!string.IsNullOrWhiteSpace(ps.MidiModifierBind) && !_profileMidiModifierHeld)
                 return false;
 
             // 2) While modifier held, slot MIDI bind press => switch profile
@@ -1329,6 +1296,7 @@ namespace Echopad.App
                 pad.StartMs = ps.StartMs;
                 pad.EndMs = ps.EndMs;
                 pad.PadName = ps.PadName;
+                pad.Graphics = ps.Graphics?.Clone() ?? new();
                 pad.InputSource = ps.InputSource <= 0 ? 1 : ps.InputSource;
                 pad.PreviewToMonitor = ps.PreviewToMonitor;
                 pad.GainDb = ps.GainDb;
@@ -1348,7 +1316,7 @@ namespace Echopad.App
 
                 if (hasFile)
                 {
-                    pad.ClipDuration = SafeReadDuration(pad.ClipPath);
+                    pad.ClipDuration = SafeReadDuration(pad.ClipPath!);
 
                     int total = (int)pad.ClipDuration.TotalMilliseconds;
 
@@ -1392,19 +1360,11 @@ namespace Echopad.App
 
         private void BtnProfileSquircle_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
-            if (!Keyboard.Modifiers.HasFlag(ModifierKeys.Control))
-                return;
-
+            if (Keyboard.Modifiers.HasFlag(ModifierKeys.Shift) && sender is FrameworkElement anchor)
+            { e.Handled = true; ShowProfileDropdown(anchor); return; }
+            if (!Keyboard.Modifiers.HasFlag(ModifierKeys.Control)) return;
             e.Handled = true;
-
-            // NEW: if locked, do nothing (SwitchToProfile also gates, this just avoids extra work)
-            if (IsProfileSwitchBlocked())
-                return;
-
-            int next = ActiveProfileIndex + 1;
-            if (next > 16) next = 1;
-
-            SwitchToProfile(next);
+            SwitchToProfile(ActiveProfileIndex % 16 + 1);
         }
         // =====================================================
         // NEW: Global gate - block profile switching while edit windows are open
@@ -1413,7 +1373,7 @@ namespace Echopad.App
         {
             // Safety belt: you already guard pad clicks with _padSettingsDialogOpen
             // but profile switching must also respect it.
-            if (_padSettingsDialogOpen)
+            if (_padSettingsDialogOpen || UiInputBlocker.IsBlocked)
                 return true;
 
             // Primary: window-based global lock (PadSettingsWindow / ProfileManagerWindow)
@@ -1554,57 +1514,15 @@ namespace Echopad.App
             }
         }
 
-        private void OpenProfileManagerWindow()
-        {
-            try
-            {
-                // NEW: create the real VM + Window
-                var vm = new Echopad.App.Settings.ProfileManagerViewModel(this, _settingsService);
-                var win = new Echopad.App.Settings.ProfileManagerWindow(vm)
-                {
-                    Owner = this
-                };
-                using var _padBlock = BeginPadsUiBlock("ProfileManagerWindow");
-                using (Echopad.App.Services.UiInputBlocker.Block("ProfileManagerWindow"))
-                {
-                    win.ShowDialog();
-                }
-
-                // Optional: after closing, refresh the squircle number + anything else
-                // If your squircle binds to ActiveProfileIndex, this is enough:
-                // OnPropertyChanged(nameof(ActiveProfileIndex));
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show(this,
-                    ex.Message,
-                    "Profile manager error",
-                    MessageBoxButton.OK,
-                    MessageBoxImage.Error);
-            }
-        }
+        private void OpenProfileManagerWindow() => OpenSettingsWindow("Profiles");
 
 
 
 
         private void BtnProfileSquircle_PreviewMouseRightButtonUp(object sender, MouseButtonEventArgs e)
-        {
-            if (!Keyboard.Modifiers.HasFlag(ModifierKeys.Control))
-                return;
-
-            e.Handled = true;
-
-            OpenProfileManagerWindow();
-        }
+        { e.Handled = true; OpenProfileManagerWindow(); }
         private void BtnProfileSquircle_PreviewMouseRightButtonDown(object sender, MouseButtonEventArgs e)
-        {
-            if (!Keyboard.Modifiers.HasFlag(ModifierKeys.Control))
-                return;
-
-            e.Handled = true;
-
-            OpenProfileManagerWindow();
-        }
+        { e.Handled = true; OpenProfileManagerWindow(); }
 
 
         // =====================================================
@@ -1639,7 +1557,7 @@ namespace Echopad.App
                         gs.AudioFolders.Add(def);
 
                     _settingsService.Save(gs);
-                    
+
                 }
                 catch
                 {
@@ -1647,7 +1565,7 @@ namespace Echopad.App
                     gs.DropFolderEnabled = false;
                     gs.DropWatchFolder = null;
                     _settingsService.Save(gs);
-                    
+
                 }
             }
 
@@ -1742,7 +1660,7 @@ namespace Echopad.App
         // =====================================================
         // SETTINGS WINDOWS
         // =====================================================
-        private void OpenSettingsWindow()
+        private void OpenSettingsWindow(string? initialPage = null)
         {
             if (_settingsDialogOpen)
                 return;
@@ -1755,9 +1673,8 @@ namespace Echopad.App
                 var midiProvider = new Echopad.Midi.MidiDeviceProvider();
 
                 var vm = new SettingsViewModel(_settingsService, audioProvider, midiProvider);
-                var win = new SettingsWindow(vm) { Owner = this };
+                var win = new SettingsWindow(vm, initialPage) { Owner = this };
                 // NEW: reload and re-assign so WPF converter receives updated settings
-                GlobalSettings = _settingsService.Load();
                 OnPropertyChanged(nameof(GlobalSettings)); // if MainWindow implements INotifyPropertyChanged
                 using (Echopad.App.Services.UiInputBlocker.Block("SettingsWindow"))
                 {
@@ -1767,19 +1684,7 @@ namespace Echopad.App
                 if (DataContext is MainViewModel mvm)
                     HydratePadsFromSettings(mvm);
 
-                RefreshDropWatcher();
-
-                // MIDI device selection may have changed
-                SetupMidiDevices();
-
-                // NEW: input devices may have changed
-                SetupInputTaps();
-
-                // reload so binds/pads are current
-                GlobalSettings = _settingsService.Load();
-
-                // re-sync LEDs after settings change
-                SyncAllPadLeds();
+                ApplySettingsLive();
             }
             finally
             {
@@ -1869,23 +1774,7 @@ namespace Echopad.App
         // HOTKEY STRING
         // =====================================================
         private static string? BuildHotkeyText(KeyEventArgs e)
-        {
-            if (e.Key is Key.LeftCtrl or Key.RightCtrl or Key.LeftAlt or Key.RightAlt
-                or Key.LeftShift or Key.RightShift or Key.LWin or Key.RWin)
-                return null;
-
-            var mods = Keyboard.Modifiers;
-            var key = (e.Key == Key.System) ? e.SystemKey : e.Key;
-
-            var sb = new StringBuilder();
-            if (mods.HasFlag(ModifierKeys.Control)) sb.Append("Ctrl+");
-            if (mods.HasFlag(ModifierKeys.Shift)) sb.Append("Shift+");
-            if (mods.HasFlag(ModifierKeys.Alt)) sb.Append("Alt+");
-            if (mods.HasFlag(ModifierKeys.Windows)) sb.Append("Win+");
-
-            sb.Append(key.ToString());
-            return sb.ToString();
-        }
+            => HotkeyTextBuilder.Build(e.Key == Key.System ? e.SystemKey : e.Key, Keyboard.Modifiers);
         // NEW: returns only the key name (no modifiers) for profile-slot style binds like "F1"
         private static string? BuildKeyOnlyText(KeyEventArgs e)
         {
@@ -1930,6 +1819,10 @@ namespace Echopad.App
                 e.Handled = true;
                 return true;
             }
+
+            foreach (var (binding, action) in TrimBindings(false))
+                if (!string.IsNullOrWhiteSpace(binding) && string.Equals(hot, binding, StringComparison.OrdinalIgnoreCase))
+                { ApplyTrimShortcut(action); e.Handled = true; return true; }
 
             if (_globalSettings.Pads != null)
             {
@@ -2028,66 +1921,23 @@ namespace Echopad.App
 
         private void MainWindow_PreviewKeyDown(object sender, KeyEventArgs e)
         {
-            if (e.Key == Key.LeftCtrl || e.Key == Key.RightCtrl)
-                _controller.SetCopyHeld(true);
-
-            if (e.IsRepeat)
-                return;
-
-            if (TryHandleProfileHotkey(e))
-                return;
-
-            if (TryHandleHotkeys(e))
-                return;
-
+            if (e.Key == Key.Escape) { _controller.SetCopyHeld(false); e.Handled = true; return; }
+            if (e.IsRepeat || !IsPadsInputEnabled) return;
+            if (TryHandleHotkeys(e)) return;
+            if (Keyboard.Modifiers != ModifierKeys.None) return;
             if (_padKeymap.TryGetPadNumber(e.Key, out int padNumber))
             {
-
-                if (!IsPadsInputEnabled)
-                {
-                    e.Handled = true;
-                    return;
-                }
+                _controller.SetCopyHeld(false);
                 RememberLastActivatedPad(padNumber);
                 _controller.ActivatePad(padNumber);
                 e.Handled = true;
             }
         }
-        private bool TryHandleProfileHotkey(KeyEventArgs e)
-        {
-            var ps = GlobalSettings.ProfileSwitch;
-            if (ps == null)
-                return false;
 
-            var hot = BuildHotkeyText(e);
-            if (string.IsNullOrWhiteSpace(hot))
-                return false;
-
-            // Modifier must match exactly (Ctrl / Ctrl+Shift / etc.)
-            if (!string.IsNullOrWhiteSpace(ps.HotkeyModifier))
-            {
-                var mods = Keyboard.Modifiers.ToString().Replace(", ", "+");
-                if (!string.Equals(mods, ps.HotkeyModifier, StringComparison.OrdinalIgnoreCase))
-                    return false;
-            }
-
-            for (int i = 0; i < ps.Slots.Count && i < 16; i++)
-            {
-                if (string.Equals(ps.Slots[i].HotkeyBind, hot, StringComparison.OrdinalIgnoreCase))
-                {
-                    SwitchToProfile(i + 1);
-                    e.Handled = true;
-                    return true;
-                }
-            }
-
-            return false;
-        }
 
         private void MainWindow_PreviewKeyUp(object sender, KeyEventArgs e)
         {
-            if (e.Key == Key.LeftCtrl || e.Key == Key.RightCtrl)
-                _controller.SetCopyHeld(false);
+            if (!Keyboard.Modifiers.HasFlag(ModifierKeys.Control)) _controller.SetCopyHeld(false);
         }
 
         private void PadButton_Click(object sender, RoutedEventArgs e)
@@ -2142,6 +1992,7 @@ namespace Echopad.App
             Debug.WriteLine("[MOUSE] PASS: calling ActivatePad()");
            //LockPadAction(pad.Index, 160);
 
+            _controller.SetCopyHeld(Keyboard.Modifiers.HasFlag(ModifierKeys.Control));
             RememberLastActivatedPad(pad.Index);
             _controller.ActivatePad(pad.Index);
         }
@@ -2172,6 +2023,7 @@ namespace Echopad.App
             if (sender is not Button btn) return;
             if (btn.Tag is not PadModel pad) return;
 
+            if (Keyboard.Modifiers.HasFlag(ModifierKeys.Control)) return;
             StartHoldTimer(pad);
         }
 
@@ -2332,7 +2184,7 @@ namespace Echopad.App
             var s = Math.Min(PadGutter.ActualWidth, PadGutter.ActualHeight);
 
             const double safety = 40;
-            s = Math.Max(s - safety, 520);
+            s = Math.Max(s - safety, 100);
 
             PadHost.Width = s;
             PadHost.Height = s;

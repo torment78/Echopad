@@ -1,574 +1,105 @@
-﻿using Microsoft.Win32;
-using System;
-using System.ComponentModel; // NEW
-using System.IO;
-using System.Reflection;
+using System.ComponentModel;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Input;
+using System.Windows.Media;
+using System.Windows.Threading;
+using Echopad.App.Services;
+using Microsoft.Win32;
 
-namespace Echopad.App.Settings
+namespace Echopad.App.Settings;
+
+public partial class SettingsWindow : Window
 {
-    public partial class SettingsWindow : Window
+    private readonly SettingsViewModel _vm;
+    private readonly DispatcherTimer _meterTimer = new() { Interval = TimeSpan.FromMilliseconds(60) };
+    private IDisposable? _inputBlock;
+    private BindingEditor? _learning;
+    public SettingsWindow(SettingsViewModel vm, string? initialPage = null)
     {
-        private IDisposable? _uiBlock;
-
-        private readonly SettingsViewModel _vm;
-        private System.Windows.Threading.DispatcherTimer? _vuTimer;
-
-        // NEW: debounce live-apply so device re-init doesn't happen 10x per second
-        private System.Windows.Threading.DispatcherTimer? _applyTimer;
-
-        public SettingsWindow(SettingsViewModel vm)
+        InitializeComponent(); _vm = vm; DataContext = vm;
+        InstalledVersionText.Text = "Installed version: " + UpdateService.InstalledVersion;
+        ReleaseChannelText.Text = ReleaseVersion.Parse(UpdateService.InstalledVersion)?.IsDevelopment == true ? "Development channel · includes unsigned development releases" : "Stable release channel";
+        Closed += (_, _) => { _updateCancellation.Cancel(); _updateCancellation.Dispose(); };
+        if (initialPage != null) Pages.SelectedItem = Pages.Items.OfType<TabItem>().FirstOrDefault(t => Equals(t.Tag, initialPage)) ?? Pages.Items[0];
+        _vm.Saved += Apply;
+        _meterTimer.Tick += (_, _) =>
         {
-            InitializeComponent();
-            _vm = vm;
-            DataContext = _vm;
-
-            // =====================================================
-            // NEW: Block MainWindow pad input while this window is open
-            // =====================================================
-            Loaded += (_, __) =>
-            {
-                _uiBlock ??= Echopad.App.Services.UiInputBlocker.Acquire("SettingsWindow");
-
-                StartVuTimer();
-                HookLiveApply(); // NEW
-            };
-
-            Closed += (_, __) =>
-            {
-                // Always unwind in reverse order
-                try { StopVuTimer(); } catch { }
-                try { UnhookLiveApply(); } catch { }
-
-                try { _uiBlock?.Dispose(); } catch { }
-                _uiBlock = null;
-            };
-        }
-
-        // =========================================================
-        // NEW: Live apply wiring
-        // =========================================================
-        private void HookLiveApply()
+            if (Owner is not MainWindow main) return;
+            foreach (var route in vm.Routes.Where(r => r.IsInput)) route.UpdateMeter(main.GetInputPeakDb(route.InputNumber));
+        };
+        Loaded += (_, _) => { _inputBlock = UiInputBlocker.Acquire("Settings"); _meterTimer.Start(); };
+        Closing += OnClosing;
+        Closed += (_, _) => { CancelMidiLearn(); _meterTimer.Stop(); _vm.Saved -= Apply; _vm.Dispose(); _inputBlock?.Dispose(); };
+    }
+    private void Apply() { if (Owner is MainWindow main) main.ApplySettingsLive(); }
+    public void StartMidiLearn(BindingEditor editor)
+    {
+        bool same = ReferenceEquals(_learning, editor); CancelMidiLearn(); if (same) return;
+        // Flush device selections before arming learn; learning text never enters saved settings.
+        _vm.Save();
+        if (Owner is not MainWindow main || !main.HasMidiInput)
         {
-            UnhookLiveApply();
-
-            _applyTimer = new System.Windows.Threading.DispatcherTimer
-            {
-                Interval = TimeSpan.FromMilliseconds(250)
-            };
-            _applyTimer.Tick += ApplyTimer_Tick;
-
-            _vm.PropertyChanged += Vm_PropertyChanged;
+            MessageBox.Show(this, "Select an available MIDI input on the MIDI & colors tab first.", "MIDI input"); return;
         }
-
-        private void ApplyTimer_Tick(object? sender, EventArgs e)
+        _learning = editor; editor.SetLearning(true);
+        main.BeginMidiLearn(bind =>
         {
-            _applyTimer?.Stop();
-            ApplyToOwnerNow();
-        }
-
-        private void UnhookLiveApply()
+            if (!ReferenceEquals(_learning, editor)) return;
+            editor.Learned(bind.Split('|')[0].Trim()); _learning = null;
+        });
+    }
+    public void CancelMidiLearn() { _learning?.SetLearning(false); _learning = null; (Owner as MainWindow)?.CancelMidiLearn(); }
+    private bool Commit()
+    {
+        // Finish text edits before validation and saving.
+        System.Windows.Input.Keyboard.ClearFocus();
+        if (HasErrors(this)) { MessageBox.Show(this, "Please correct the highlighted field before saving.", "Check settings"); return false; }
+        if (!_vm.ValidateSettings(out var error)) { MessageBox.Show(this, error, "Check settings"); return false; }
+        try { _vm.Save(); return true; } catch (Exception ex) { MessageBox.Show(this, ex.Message, "Could not save settings"); return false; }
+    }
+    private static bool HasErrors(DependencyObject node)
+    {
+        if (Validation.GetHasError(node)) return true;
+        for (int i = 0; i < VisualTreeHelper.GetChildrenCount(node); i++) if (HasErrors(VisualTreeHelper.GetChild(node, i))) return true;
+        return false;
+    }
+    private void OnClosing(object? sender, CancelEventArgs e) { if (!Commit()) e.Cancel = true; }
+    private void Save_Click(object sender, RoutedEventArgs e) => Commit();
+    private void Close_Click(object sender, RoutedEventArgs e) => Close();
+    private void ResetAppearance_Click(object sender, RoutedEventArgs e) => _vm.ResetAppearance();
+    private void PickInputColor_Click(object sender, RoutedEventArgs e)
+    {
+        bool firstInput = (sender as FrameworkElement)?.Tag?.ToString() == "1";
+        var hex = firstInput ? _vm.UiArmedInput1Hex : _vm.UiArmedInput2Hex;
+        using var picker = new System.Windows.Forms.ColorDialog { FullOpen = true, AnyColor = true };
+        try
         {
-            try
-            {
-                if (_applyTimer != null)
-                {
-                    _applyTimer.Stop();
-                    _applyTimer.Tick -= ApplyTimer_Tick;
-                }
-            }
-            catch { }
-
-            _applyTimer = null;
-
-            try { _vm.PropertyChanged -= Vm_PropertyChanged; } catch { }
+            var color = (Color)ColorConverter.ConvertFromString(hex ?? "");
+            picker.Color = System.Drawing.Color.FromArgb(color.R, color.G, color.B);
         }
-
-        private void Vm_PropertyChanged(object? sender, PropertyChangedEventArgs e)
-        {
-            // Only live-apply for settings that affect engines/devices/watcher.
-            // Everything still autosaves in SettingsViewModel already.
-            switch (e.PropertyName)
-            {
-                // Local device IDs
-                case nameof(SettingsViewModel.Input1DeviceId):
-                case nameof(SettingsViewModel.Input2DeviceId):
-                case nameof(SettingsViewModel.MainOutDeviceId):
-                case nameof(SettingsViewModel.MonitorOutDeviceId):
-
-                // NEW: per-channel mode (Local / VBAN)
-                case nameof(SettingsViewModel.Input1Mode):
-                case nameof(SettingsViewModel.Input2Mode):
-                case nameof(SettingsViewModel.Out1Mode):
-                case nameof(SettingsViewModel.Out2Mode):
-
-                // NEW: VBAN RX fields (Input1/Input2)
-                case nameof(SettingsViewModel.Input1VbanIp):
-                case nameof(SettingsViewModel.Input1VbanPort):
-                case nameof(SettingsViewModel.Input1VbanStream):
-
-                case nameof(SettingsViewModel.Input2VbanIp):
-                case nameof(SettingsViewModel.Input2VbanPort):
-                case nameof(SettingsViewModel.Input2VbanStream):
-
-                // NEW: VBAN TX fields (Out1/Out2)
-                case nameof(SettingsViewModel.Out1VbanIp):
-                case nameof(SettingsViewModel.Out1VbanPort):
-                case nameof(SettingsViewModel.Out1VbanStream):
-
-                case nameof(SettingsViewModel.Out2VbanIp):
-                case nameof(SettingsViewModel.Out2VbanPort):
-                case nameof(SettingsViewModel.Out2VbanStream):
-
-                // MIDI + Drop watcher
-                case nameof(SettingsViewModel.MidiInDeviceId):
-                case nameof(SettingsViewModel.MidiOutDeviceId):
-                case nameof(SettingsViewModel.DropFolderEnabled):
-                case nameof(SettingsViewModel.DropWatchFolder):
-                    RequestApplyToOwner();
-                    break;
-            }
-        }
-
-        private void RequestApplyToOwner()
-        {
-            if (_applyTimer == null)
-                return;
-
-            _applyTimer.Stop();
-            _applyTimer.Start();
-        }
-
-        private void ApplyToOwnerNow()
-        {
-            if (Owner is not MainWindow mw)
-                return;
-
-            _vm.Save(); // NEW: save immediately
-            mw.ApplySettingsLive();
-        }
-
-        private void Save_Click(object sender, RoutedEventArgs e)
-        {
-            EnsureDropFolderDefaultIfEnabled();
-            EnsureDropFolderExistsIfEnabled();
-
-            _vm.Save();
-
-            // NEW: ensure final apply before closing (in case last click is still debounced)
-            ApplyToOwnerNow();
-
-            DialogResult = true;
-        }
-
-        private void Cancel_Click(object sender, RoutedEventArgs e)
-        {
-            DialogResult = false;
-        }
-
-        private void StartVuTimer()
-        {
-            StopVuTimer();
-
-            _vuTimer = new System.Windows.Threading.DispatcherTimer
-            {
-                Interval = TimeSpan.FromMilliseconds(80) // ~12.5 fps
-            };
-
-            _vuTimer.Tick += (_, __) =>
-            {
-                if (Owner is not MainWindow mw)
-                    return;
-
-                // Input 1
-                var p1 = mw.GetInputPeak01(1);
-                var db1 = mw.GetInputPeakDb(1);
-                if (VuInput1 != null) VuInput1.Value = p1;
-                if (VuInput1Db != null) VuInput1Db.Text = db1 <= -89 ? "-inf" : $"{db1:0} dB";
-
-                // Input 2
-                var p2 = mw.GetInputPeak01(2);
-                var db2 = mw.GetInputPeakDb(2);
-                if (VuInput2 != null) VuInput2.Value = p2;
-                if (VuInput2Db != null) VuInput2Db.Text = db2 <= -89 ? "-inf" : $"{db2:0} dB";
-            };
-
-            _vuTimer.Start();
-        }
-
-        private void StopVuTimer()
-        {
-            try
-            {
-                if (_vuTimer != null)
-                {
-                    _vuTimer.Stop();
-                    _vuTimer = null;
-                }
-            }
-            catch { }
-        }
-
-        private void AddFolder_Click(object sender, RoutedEventArgs e)
-        {
-            var dlg = new OpenFileDialog
-            {
-                Title = "Choose an audio folder (import/drop pool)",
-                CheckFileExists = false,
-                CheckPathExists = true,
-                FileName = "Select Folder",
-                Filter = "Folders|*.none"
-            };
-
-            if (dlg.ShowDialog(this) == true)
-            {
-                var path = Path.GetDirectoryName(dlg.FileName);
-
-                if (!string.IsNullOrWhiteSpace(path))
-                    _vm.AddFolder(path);
-            }
-        }
-
-        private void RemoveFolder_Click(object sender, RoutedEventArgs e)
-        {
-            if (FoldersList.SelectedItem is string path)
-            {
-                _vm.RemoveFolder(path);
-            }
-        }
-
-        private void UseSelectedAsDropFolder_Click(object sender, RoutedEventArgs e)
-        {
-            if (FoldersList.SelectedItem is not string selected || string.IsNullOrWhiteSpace(selected))
-            {
-                MessageBox.Show(this, "Select a folder from the list first.", "Echopad",
-                    MessageBoxButton.OK, MessageBoxImage.Information);
-                return;
-            }
-
-            _vm.SetDropFolder(selected);
-            EnsureDropFolderExistsIfEnabled();
-
-            // NEW: Apply immediately
-            RequestApplyToOwner();
-        }
-
-        private void BrowseDropWatchFolder_Click(object sender, RoutedEventArgs e)
-        {
-            var selected = PickFolder("Choose Drop Folder (watch folder)");
-            if (string.IsNullOrWhiteSpace(selected))
-                return;
-
-            _vm.SetDropFolder(selected);
-            EnsureDropFolderExistsIfEnabled();
-
-            // NEW: Apply immediately
-            RequestApplyToOwner();
-        }
-
-        private void OpenDropWatchFolder_Click(object sender, RoutedEventArgs e)
-        {
-            var path = _vm.DropWatchFolder;
-
-            if (string.IsNullOrWhiteSpace(path))
-            {
-                MessageBox.Show(this, "No Drop Folder is set yet.", "Echopad",
-                    MessageBoxButton.OK, MessageBoxImage.Information);
-                return;
-            }
-
-            try
-            {
-                if (!Directory.Exists(path))
-                    Directory.CreateDirectory(path);
-
-                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
-                {
-                    FileName = path,
-                    UseShellExecute = true
-                });
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show(this, $"Could not open folder:\n{ex.Message}", "Echopad",
-                    MessageBoxButton.OK, MessageBoxImage.Error);
-            }
-        }
-
-        private void ClearDropWatchFolder_Click(object sender, RoutedEventArgs e)
-        {
-            _vm.ClearDropFolder();
-
-            // NEW: Apply immediately
-            RequestApplyToOwner();
-        }
-
-        private void CreateDefaultDropWatchFolder_Click(object sender, RoutedEventArgs e)
-        {
-            var path = GetDefaultDropFolder();
-
-            try
-            {
-                Directory.CreateDirectory(path);
-                _vm.SetDropFolder(path);
-
-                // NEW: Apply immediately
-                RequestApplyToOwner();
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show(this, $"Could not create folder:\n{ex.Message}", "Echopad",
-                    MessageBoxButton.OK, MessageBoxImage.Error);
-            }
-        }
-
-        private void EnsureDropFolderDefaultIfEnabled()
-        {
-            if (!_vm.DropFolderEnabled)
-                return;
-
-            if (!string.IsNullOrWhiteSpace(_vm.DropWatchFolder))
-                return;
-
-            var path = GetDefaultDropFolder();
-
-            try
-            {
-                Directory.CreateDirectory(path);
-                _vm.SetDropFolder(path);
-            }
-            catch
-            {
-                _vm.ClearDropFolder();
-            }
-        }
-
-        private void EnsureDropFolderExistsIfEnabled()
-        {
-            try
-            {
-                if (_vm.DropFolderEnabled && !string.IsNullOrWhiteSpace(_vm.DropWatchFolder))
-                    Directory.CreateDirectory(_vm.DropWatchFolder);
-            }
-            catch
-            {
-                // don’t crash settings window on folder permission issues
-            }
-        }
-
-        private static string GetDefaultDropFolder()
-        {
-            var baseDir = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
-            return Path.Combine(baseDir, "Echopad", "Drop");
-        }
-
-        private string? PickFolder(string title)
-        {
-            var dlg = new OpenFileDialog
-            {
-                Title = title,
-                CheckFileExists = false,
-                CheckPathExists = true,
-                FileName = "Select Folder",
-                Filter = "Folders|*.none"
-            };
-
-            if (dlg.ShowDialog(this) == true)
-                return Path.GetDirectoryName(dlg.FileName);
-
-            return null;
-        }
-
-        private void SetHotkey_ToggleEdit_Click(object sender, RoutedEventArgs e)
-        {
-            var cap = new HotkeyCaptureWindow { Owner = this };
-            if (cap.ShowDialog() == true)
-                _vm.HotkeyToggleEdit = cap.HotkeyText;
-        }
-
-        private void SetHotkey_OpenSettings_Click(object sender, RoutedEventArgs e)
-        {
-            var cap = new HotkeyCaptureWindow { Owner = this };
-            if (cap.ShowDialog() == true)
-                _vm.HotkeyOpenSettings = cap.HotkeyText;
-        }
-
-        private void LearnMidi_ToggleEdit_Click(object sender, RoutedEventArgs e)
-        {
-            _vm.MidiBindToggleEdit = "Learning…";
-            if (Owner is MainWindow mw)
-            {
-                mw.BeginMidiLearn(bind =>
-                {
-                    _vm.MidiBindToggleEdit = bind;
-                });
-            }
-        }
-
-        private void LearnMidi_OpenSettings_Click(object sender, RoutedEventArgs e)
-        {
-            _vm.MidiBindOpenSettings = "Learning…";
-            if (Owner is MainWindow mw)
-            {
-                mw.BeginMidiLearn(bind =>
-                {
-                    _vm.MidiBindOpenSettings = bind;
-                });
-            }
-        }
-
-        private void SetHotkey_TrimSelectIn_Click(object sender, RoutedEventArgs e)
-        {
-            var cap = new HotkeyCaptureWindow { Owner = this };
-            if (cap.ShowDialog() == true)
-                _vm.HotkeyTrimSelectIn = cap.HotkeyText;
-        }
-
-        private void SetHotkey_TrimSelectOut_Click(object sender, RoutedEventArgs e)
-        {
-            var cap = new HotkeyCaptureWindow { Owner = this };
-            if (cap.ShowDialog() == true)
-                _vm.HotkeyTrimSelectOut = cap.HotkeyText;
-        }
-
-        private void SetHotkey_TrimPlus_Click(object sender, RoutedEventArgs e)
-        {
-            var cap = new HotkeyCaptureWindow { Owner = this };
-            if (cap.ShowDialog() == true)
-                _vm.HotkeyTrimNudgePlus = cap.HotkeyText;
-        }
-
-        private void SetHotkey_TrimMinus_Click(object sender, RoutedEventArgs e)
-        {
-            var cap = new HotkeyCaptureWindow { Owner = this };
-            if (cap.ShowDialog() == true)
-                _vm.HotkeyTrimNudgeMinus = cap.HotkeyText;
-        }
-
-        private void LearnMidi_TrimSelectIn_Click(object sender, RoutedEventArgs e)
-        {
-            _vm.MidiBindTrimSelectIn = "Learning…";
-            if (Owner is MainWindow mw)
-            {
-                mw.BeginMidiLearn(bind =>
-                {
-                    _vm.MidiBindTrimSelectIn = bind;
-                });
-            }
-        }
-
-        private void LearnMidi_TrimSelectOut_Click(object sender, RoutedEventArgs e)
-        {
-            _vm.MidiBindTrimSelectOut = "Learning…";
-            if (Owner is MainWindow mw)
-            {
-                mw.BeginMidiLearn(bind =>
-                {
-                    _vm.MidiBindTrimSelectOut = bind;
-                });
-            }
-        }
-
-        private void LearnMidi_TrimPlus_Click(object sender, RoutedEventArgs e)
-        {
-            _vm.MidiBindTrimNudgePlus = "Learning…";
-            if (Owner is MainWindow mw)
-            {
-                mw.BeginMidiLearn(bind =>
-                {
-                    _vm.MidiBindTrimNudgePlus = bind;
-                });
-            }
-        }
-
-        private void TestMidiOut25_Click(object sender, RoutedEventArgs e)
-        {
-            if (Owner is MainWindow mw)
-            {
-                mw.SendHardMidiOutTest_Value25();
-            }
-            else
-            {
-                MessageBox.Show(this,
-                    "Settings window has no MainWindow Owner.\nCannot access MIDI OUT test.",
-                    "Echopad MIDI Test",
-                    MessageBoxButton.OK,
-                    MessageBoxImage.Warning);
-            }
-        }
-
-        private void LearnMidi_TrimMinus_Click(object sender, RoutedEventArgs e)
-        {
-            _vm.MidiBindTrimNudgeMinus = "Learning…";
-            if (Owner is MainWindow mw)
-            {
-                mw.BeginMidiLearn(bind =>
-                {
-                    _vm.MidiBindTrimNudgeMinus = bind;
-                });
-            }
-        }
-
-        private void BindClearMenu_Clear_Click(object sender, RoutedEventArgs e)
-        {
-            if (sender is not MenuItem mi) return;
-
-            // ContextMenu.PlacementTarget points at the TextBox that was right-clicked
-            if (mi.Parent is not ContextMenu cm) return;
-            if (cm.PlacementTarget is not TextBox tb) return;
-
-            ClearBindingForTag(tb);
-        }
-
-        // -----------------------------------------------------------------
-        // NEW: Delete / Backspace clears (and keeps the box read-only)
-        // -----------------------------------------------------------------
-        private void BindBox_PreviewKeyDown(object sender, KeyEventArgs e)
-        {
-            if (sender is not TextBox tb) return;
-
-            if (e.Key == Key.Delete || e.Key == Key.Back)
-            {
-                ClearBindingForTag(tb);
-                e.Handled = true;
-            }
-        }
-
-        // -----------------------------------------------------------------
-        // NEW: Central clear helper
-        // - Tag must match a public settable property on your ViewModel
-        //   (ex: "MidiBindToggleEdit", "HotkeyOpenSettings", etc.)
-        // -----------------------------------------------------------------
-        private void ClearBindingForTag(TextBox tb)
-        {
-            var tag = tb.Tag as string;
-            if (string.IsNullOrWhiteSpace(tag)) return;
-
-            var vm = DataContext;
-            if (vm == null) return;
-
-            var prop = vm.GetType().GetProperty(tag, BindingFlags.Public | BindingFlags.Instance);
-            if (prop == null || !prop.CanWrite) return;
-
-            // Most of your binds are string; some might be nullables.
-            if (prop.PropertyType == typeof(string))
-            {
-                prop.SetValue(vm, string.Empty);
-            }
-            else if (Nullable.GetUnderlyingType(prop.PropertyType) != null)
-            {
-                prop.SetValue(vm, null);
-            }
-            else
-            {
-                // fallback: try empty string if assignable
-                if (prop.PropertyType.IsAssignableFrom(typeof(string)))
-                    prop.SetValue(vm, string.Empty);
-            }
-        }
-
-
+        catch { /* An unfinished hex edit can be replaced by choosing a color. */ }
+        var owner = new PaletteOwner(new System.Windows.Interop.WindowInteropHelper(this).Handle);
+        if (picker.ShowDialog(owner) != System.Windows.Forms.DialogResult.OK) return;
+        var chosen = picker.Color;
+        string selected = $"#{chosen.R:X2}{chosen.G:X2}{chosen.B:X2}";
+        if (firstInput) _vm.UiArmedInput1Hex = selected;
+        else _vm.UiArmedInput2Hex = selected;
+    }
+    private sealed class PaletteOwner(IntPtr handle) : System.Windows.Forms.IWin32Window
+    {
+        public IntPtr Handle => handle;
+    }
+    private void AddFolder_Click(object sender, RoutedEventArgs e) { var picker = new OpenFolderDialog { Title = "Add audio library folder" }; if (picker.ShowDialog(this) == true) _vm.AddFolder(picker.FolderName); }
+    private void RemoveFolder_Click(object sender, RoutedEventArgs e) { if (AudioFolderList.SelectedItem is string folder) _vm.RemoveFolder(folder); }
+    private void BrowseDrop_Click(object sender, RoutedEventArgs e) { var picker = new OpenFolderDialog { Title = "Choose drop folder" }; if (picker.ShowDialog(this) == true) _vm.DropWatchFolder = picker.FolderName; }
+
+    private void TestMidi_Click(object sender, RoutedEventArgs e) { if (Commit() && Owner is MainWindow main) main.SendHardMidiOutTest_Value25(); }
+    private void UseLibraryFolder_Click(object sender, RoutedEventArgs e) { if (AudioFolderList.SelectedItem is string folder) _vm.DropWatchFolder = folder; }
+    private void ClearDrop_Click(object sender, RoutedEventArgs e) { _vm.DropFolderEnabled = false; _vm.DropWatchFolder = ""; }
+    private void DefaultDrop_Click(object sender, RoutedEventArgs e) { _vm.DropWatchFolder = System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "Echopad", "Drop"); }
+    private void OpenDrop_Click(object sender, RoutedEventArgs e)
+    {
+        if (System.IO.Directory.Exists(_vm.DropWatchFolder))
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(_vm.DropWatchFolder!) { UseShellExecute = true });
     }
 }

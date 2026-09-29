@@ -2,22 +2,20 @@
 ; Echopad Installer (Inno Setup 6.x) - FULL TEMPLATE
 ; ============================================================
 
-#define MyAppName        "Echopad"
+#define MyAppName        "EchoPad"
 #define MyAppPublisher   "ElkaSoft"
-#define MyAppURL         "https://example.com"
+#define MyAppURL         "https://github.com/torment78/Echopad"
 #define MyAppExeName     "Echopad.App.exe"
-
-#define MyAppName "Echopad"
-#define MyAppExeName "Echopad.App.exe"
-
-; CHANGE THIS to your REAL publish folder (this is the INPUT)
-#define AppBuildDir      "C:\Users\torme\source\repos\Echopad\installer\Output"
-
-; Script-relative asset folder (wizard images / license / etc)
-#define AssetDir SourcePath + "\Assets"
-
-; Your .ico (same as csproj icon)
-#define InstallerIcon "C:\Users\torme\source\repos\Echopad\installer\Assets\Ecopadc.ico"
+#ifndef MyAppVersion
+  #define MyAppVersion "1.1.0-dev.20260929.1"
+#endif
+#ifndef AppBuildDir
+  #define AppBuildDir SourcePath + "\..\artifacts\publish"
+#endif
+#ifndef InstallerOutputDir
+  #define InstallerOutputDir SourcePath + "\..\artifacts\release"
+#endif
+#define InstallerIcon SourcePath + "\Assets\Ecopadc.ico"
 
 ; Wizard images (put these files in: C:\Users\torme\source\repos\Echopad\installer\Assets\)
 #define WizardSidebarLight   "Assets\wizard_sidebar_light.png"
@@ -28,7 +26,7 @@
 [Setup]
 AppId={{A2F2F07E-7A2F-4CE9-9D53-9E4F6B6F2F11}
 AppName={#MyAppName}
-AppVersion=1.0.0
+AppVersion={#MyAppVersion}
 AppPublisher={#MyAppPublisher}
 AppPublisherURL={#MyAppURL}
 AppSupportURL={#MyAppURL}
@@ -38,11 +36,12 @@ DefaultDirName={autopf}\{#MyAppName}
 DefaultGroupName={#MyAppName}
 
 ; ✅ YOUR installer output folder:
-OutputDir=C:\Users\torme\source\repos\Echopad\installer\Output
-OutputBaseFilename={#MyAppName}_Setup
+OutputDir={#InstallerOutputDir}
+OutputBaseFilename=EchoPad-{#MyAppVersion}-Unsigned-Setup
 Compression=lzma2
 SolidCompression=yes
-ArchitecturesInstallIn64BitMode=x64
+ArchitecturesAllowed=x64compatible
+ArchitecturesInstallIn64BitMode=x64compatible
 
 ; Installer EXE icon = your app icon
 SetupIconFile={#InstallerIcon}

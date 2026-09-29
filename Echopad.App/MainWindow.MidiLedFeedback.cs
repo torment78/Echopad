@@ -77,7 +77,7 @@ namespace Echopad.App
             // If set (non-empty), it sends raw bytes and returns early.
             // ============================================================
 
-            string raw = state switch
+            string? raw = state switch
             {
                 PadState.Loaded => ps.MidiLedActiveRaw,   // NEW setting
                 PadState.Playing => ps.MidiLedRunningRaw,  // NEW setting
@@ -124,7 +124,7 @@ namespace Echopad.App
                 ((cc & 0x7F) << 8) |
                 ((val & 0x7F) << 16);
 
-            _midiOut.Send(msg);
+            _midiOut?.Send(msg);
 
             Debug.WriteLine($"[LED] CC ch={channel1} cc={cc} val={val}");
         }
@@ -138,7 +138,7 @@ namespace Echopad.App
                 ((note & 0x7F) << 8) |
                 ((vel & 0x7F) << 16);
 
-            _midiOut.Send(msg);
+            _midiOut?.Send(msg);
 
             Debug.WriteLine($"[LED] NOTE ch={channel1} note={note} vel={vel}");
         }

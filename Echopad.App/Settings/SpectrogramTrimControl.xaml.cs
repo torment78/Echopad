@@ -1,4 +1,4 @@
-﻿using NAudio.Dsp;
+using NAudio.Dsp;
 using NAudio.Wave;
 using System;
 using System.Linq;
@@ -61,6 +61,7 @@ namespace Echopad.App.Settings
         // ==============================
         private (float min, float max)[]? _waveform;
         
+        private int _waveformGeneration;
         private bool _dragIn;
         private bool _dragOut;
 
@@ -109,6 +110,7 @@ namespace Echopad.App.Settings
         // ==============================
         private void RebuildIfNeeded()
         {
+            int generation = ++_waveformGeneration;
             if (!IsLoaded) return;
 
             if (string.IsNullOrWhiteSpace(AudioPath) || DurationMs <= 0)
@@ -121,16 +123,17 @@ namespace Echopad.App.Settings
 
             var path = AudioPath!;
 
-            // Kick off a lightweight build
+            int columns = Math.Max(64, (int)Math.Round(ActualWidth));
+            // Read WPF properties on the UI thread, then decode audio in the worker.
             _ = Task.Run(() =>
             {
                 try
                 {
-                    int columns = Math.Max(64, (int)Math.Round(ActualWidth)); // bars roughly match control width
                     var wf = BuildWaveform(path, columns);
 
                     Dispatcher.Invoke(() =>
                     {
+                        if (generation != _waveformGeneration) return;
                         _waveform = wf;   // (float min, float max)[]
                         RedrawBitmap();
                         UpdateOverlay();
@@ -140,12 +143,9 @@ namespace Echopad.App.Settings
                 {
                     Dispatcher.Invoke(() =>
                     {
+                        if (generation != _waveformGeneration) return;
                         _waveform = null;
-
-                        // Debug fallback so you KNOW the Image layer works
-                        Img.Source = BuildDebugPattern(
-                            Math.Max(2, (int)Math.Round(ActualWidth)),
-                            Math.Max(2, (int)Math.Round(ActualHeight)));
+                        Img.Source = null;
 
                         UpdateOverlay();
                     });

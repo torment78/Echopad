@@ -1,4 +1,8 @@
 <Solution>
+  <Configurations>
+    <Platform Name="Any CPU" />
+    <Platform Name="x64" />
+  </Configurations>
   <Folder Name="/docs/">
     <File Path="docs/README.md" />
     <File Path="docs/SETUP.md" />
@@ -27,9 +31,19 @@
   <Folder Name="/Solution Items/">
     <File Path="installer/Echopad.iss" />
   </Folder>
-  <Project Path="Echopad.App/Echopad.App.csproj" Id="5c2c3170-5be5-4fb9-81a8-685973dee8d8" />
-  <Project Path="Echopad.Audio/Echopad.Audio.csproj" />
-  <Project Path="Echopad.Core/Echopad.Core.csproj" />
-  <Project Path="Echopad.IO/Echopad.IO.csproj" />
-  <Project Path="Echopad.Midi/Echopad.Midi.csproj" />
+  <Project Path="Echopad.App/Echopad.App.csproj" Id="5c2c3170-5be5-4fb9-81a8-685973dee8d8">
+    <Platform Solution="*|x64" Project="x64" />
+  </Project>
+  <Project Path="Echopad.Audio/Echopad.Audio.csproj">
+    <Platform Solution="*|x64" Project="x64" />
+  </Project>
+  <Project Path="Echopad.Core/Echopad.Core.csproj">
+    <Platform Solution="*|x64" Project="x64" />
+  </Project>
+  <Project Path="Echopad.IO/Echopad.IO.csproj">
+    <Platform Solution="*|x64" Project="x64" />
+  </Project>
+  <Project Path="Echopad.Midi/Echopad.Midi.csproj">
+    <Platform Solution="*|x64" Project="x64" />
+  </Project>
 </Solution>

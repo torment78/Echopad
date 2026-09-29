@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
@@ -25,10 +25,9 @@ namespace Echopad.App.Services
         // -------------------------------------------------
         // One-file storage: profiles.json
         // -------------------------------------------------
-        private static string BaseDir
-            => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "Echopad");
+        private string BaseDir => _settingsService.DataDirectory;
 
-        private static string ProfilesPath
+        private string ProfilesPath
             => Path.Combine(BaseDir, "profiles.json");
 
         public ProfileStore LoadStore()
@@ -233,7 +232,7 @@ namespace Echopad.App.Services
             }
         }
 
-        
+
 
         // NEW: optional preserve of existing MIDI/hotkeys (fixes "random" save wipe)
         public void SavePadsToProfile(GlobalSettings gs, int profileIndex, bool preserveExistingMidiAndHotkeys)
@@ -247,19 +246,15 @@ namespace Echopad.App.Services
 
             // If lock mode is enabled for non-profile1, we must NOT persist overlayed MIDI/hotkeys.
             // We preserve what the profile already stored for those fields.
-            if (preserveExistingMidiAndHotkeys && p.Pads != null && p.Pads.Count > 0)
+            bool linkedMidi = profileIndex != 1 && (gs?.ProfileSwitch.PadsMidiSameAsProfile1 == true || gs?.ProfileSwitch.PadsMidiAndHotkeysSameAsProfile1 == true);
+            bool linkedHotkeys = profileIndex != 1 && gs?.ProfileSwitch.PadsMidiAndHotkeysSameAsProfile1 == true;
+            if (preserveExistingMidiAndHotkeys || linkedMidi || linkedHotkeys)
             {
-                foreach (var kv in p.Pads)
+                foreach (var kv in cloned)
                 {
-                    int padIndex = kv.Key;
-                    var existing = kv.Value;
-                    if (existing == null) continue;
-
-                    if (!cloned.TryGetValue(padIndex, out var dst) || dst == null)
-                        continue;
-
-                    dst.MidiTriggerDisplay = existing.MidiTriggerDisplay;
-                    dst.PadHotkey = existing.PadHotkey;
+                    var original = p.Pads.GetValueOrDefault(kv.Key) ?? PadSettings.CreateDefault(kv.Key);
+                    if (preserveExistingMidiAndHotkeys || linkedMidi) kv.Value.MidiTriggerDisplay = original.MidiTriggerDisplay;
+                    if (preserveExistingMidiAndHotkeys || linkedHotkeys) kv.Value.PadHotkey = original.PadHotkey;
                 }
             }
 
