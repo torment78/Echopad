@@ -32,7 +32,7 @@ The Windows Release regression harness passes **70 checks**, including:
 - Update version ordering, development/stable channels, malformed/offline/rate-limited feeds and available-update UI.
 - Rendering every settings/pad tab, compact layout checks and no WPF binding errors.
 
-The public GitHub release endpoint was also checked successfully. UI examples use generated artwork and simulated devices/meter levels. Physical audio interfaces, real MIDI controllers and a remote VBAN receiver still require a user audition; the automated tests do not claim that hardware coverage.
+The public GitHub release endpoint was also checked successfully. UI examples use generated artwork and simulated devices/meter levels; the trim illustration is a supplied screenshot from a running EchoPad session. Physical audio interfaces, real MIDI controllers and a remote VBAN receiver still require a user audition; the automated tests do not claim that hardware coverage.
 
 ## Downloads and signing
 
