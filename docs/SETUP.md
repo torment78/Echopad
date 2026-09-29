@@ -1,6 +1,27 @@
 # EchoPad setup and menu guide
 
-This guide covers **1.1.0-dev.20260929.2 — Unsigned Dev Release**. Menu examples are renders of the real WPF controls using test settings; device names and meter levels are simulated. The trim section uses a screenshot supplied from a running EchoPad session. The orange update image demonstrates the available-update state.
+This guide covers **1.1.0-dev.20260929.3 — Unsigned Dev Release**. Menu examples are renders of the real WPF controls using test settings; device names and meter levels are simulated. The trim section uses a screenshot supplied from a running EchoPad session. The orange update image demonstrates the available-update state.
+
+## Windows startup and tray
+
+![General startup and tray settings](images/current/settings-General.png)
+
+Open **Settings → General**. These options are independent and default to off, including when upgrading an older installation:
+
+| Option | Behavior |
+| --- | --- |
+| Start with Windows | Starts EchoPad when this Windows user signs in. |
+| Open to tray | Opens EchoPad in the notification area without showing its main window. |
+| Close to tray | The main window's X or Alt+F4 hides it and keeps the application running. |
+| Minimize to tray | Minimizing hides the taskbar button and keeps the tray icon available. |
+
+Audio, MIDI, rolling capture and the drop-folder watcher remain active while hidden. Keyboard pad shortcuts still require EchoPad to be active. Double-click its tray icon to show the window, or right-click for **Open EchoPad**, **Settings** and **Exit EchoPad**. Windows may place the icon under its notification-area arrow. Launching EchoPad again restores the existing instance; an automatic Windows startup launch does not force an already running window to open.
+
+**Exit EchoPad** quits even with Close to tray enabled. A pending capture is allowed to finish saving; playing audio does not delay exit. The settings window's own **Close** button only saves and closes settings. Installer updates and Windows shutdown also exit the application.
+
+Start with Windows registers the current executable for this user, so install or extract EchoPad into its intended permanent folder before enabling it. Launching after an upgrade refreshes that path. Disable the option to remove EchoPad's startup entry. Open to tray applies to both manual and automatic first launches; `Echopad.App.exe --show` overrides it for that launch.
+
+The installer uses the dark ElkaSoft layout with EchoPad's portrait waveform image. The application retains its existing Appearance controls; there is no new application theme switch.
 
 ## Start with audio routing
 
