@@ -1,6 +1,6 @@
 # EchoPad setup and menu guide
 
-This guide covers **1.1.0-dev.20260929.1 — Unsigned Dev Release**. Menu examples are renders of the real WPF controls using test settings; device names and meter levels are simulated. The trim section uses a screenshot supplied from a running EchoPad session. The orange update image demonstrates the available-update state.
+This guide covers **1.1.0-dev.20260929.2 — Unsigned Dev Release**. Menu examples are renders of the real WPF controls using test settings; device names and meter levels are simulated. The trim section uses a screenshot supplied from a running EchoPad session. The orange update image demonstrates the available-update state.
 
 ## Start with audio routing
 
@@ -133,10 +133,18 @@ Open **Settings → Updates** and click **Check for updates**. EchoPad checks pu
 
 ![Example of an available update](images/current/settings-Updates-available.png)
 
-**Open release page** opens GitHub in your browser. Download and install when ready; checking does not install or restart the app. Development builds include newer development releases in their checks; stable builds check stable releases. Offline, rate-limit and unreadable-feed results are reported as errors, not as “up to date.”
+Click the orange **Download and install** button to download the matching Windows installer. A rounded progress bar shows the download, and **Cancel download** keeps EchoPad running. After verifying the download, EchoPad saves settings, waits for pending captures and launches the installer. Once Windows accepts the launch, EchoPad closes. Finish the installer normally and use its **Launch EchoPad** option to reopen the application. A failed download, failed launch or canceled Windows elevation prompt leaves EchoPad open.
+
+![Example installer download in progress](images/current/settings-Updates-downloading.png)
+
+**Open release page** remains available for release notes and manual downloads. Releases without a supported installer and verification metadata use that manual path. Checking alone never installs anything. Development builds include newer development releases; stable builds check stable releases. Offline, rate-limit and unreadable-feed results are reported as errors, not as “up to date.”
+
+This download/install flow begins with build `1.1.0-dev.20260929.2`. Older builds still open GitHub, so use their release-page link to install this build once. Subsequent supported updates can use the new button.
 
 ## Saved data and backups
 
-Settings, profiles and imported PNG copies live in `%LOCALAPPDATA%\Echopad`: `echopad.settings.json`, `profiles.json` and `PadImages`. Captures live in Documents under `Echopad\Captures`. Audio loaded from elsewhere remains referenced at its original path.
+The application installs by default in `C:\Program Files\ElkaSoft\EchoPad`. Settings, profiles, imported PNG copies and captures live in `%LOCALAPPDATA%\ElkaSoft\EchoPad`: `echopad.settings.json`, `profiles.json`, `PadImages` and `Captures`.
 
-Back up settings, profiles, PadImages, captures and any external audio together. Stored image/audio paths are absolute; moving the backup to a different Windows user or computer can require reselecting those files. This ZIP build shares the normal EchoPad data folder and is not an isolated portable profile.
+On first launch, EchoPad copies saves from the previous `%LOCALAPPDATA%\Echopad` folder, or older executable-folder saves, and recordings from Documents `Echopad\Captures`. Imported profiles/settings are updated to use the copied media. Originals and existing destination settings are kept. Audio loaded from external locations, audio libraries and watched drop folders stay at their configured paths. The default watched drop folder remains Documents `Echopad\Drop`.
+
+Back up the complete new data directory and any external audio together. Stored image/audio paths are absolute; moving the backup to a different Windows user or computer can require reselecting those files. This ZIP build shares the normal EchoPad data folder and is not an isolated portable profile. See [migration details and recovery](MIGRATION.md) before manually moving saved data.

@@ -7,7 +7,7 @@
 #define MyAppURL         "https://github.com/torment78/Echopad"
 #define MyAppExeName     "Echopad.App.exe"
 #ifndef MyAppVersion
-  #define MyAppVersion "1.1.0-dev.20260929.1"
+  #define MyAppVersion "1.1.0-dev.20260929.2"
 #endif
 #ifndef AppBuildDir
   #define AppBuildDir SourcePath + "\..\artifacts\publish"
@@ -32,7 +32,7 @@ AppPublisherURL={#MyAppURL}
 AppSupportURL={#MyAppURL}
 AppUpdatesURL={#MyAppURL}
 
-DefaultDirName={autopf}\{#MyAppName}
+DefaultDirName={autopf}\ElkaSoft\{#MyAppName}
 DefaultGroupName={#MyAppName}
 
 ; ✅ YOUR installer output folder:
@@ -58,7 +58,8 @@ WizardSmallImageFileDynamicDark={#WizardHeaderDark}
 
 DisableProgramGroupPage=yes
 DisableWelcomePage=no
-UsePreviousAppDir=yes
+; Move upgrades to the ElkaSoft family folder instead of reusing the old location.
+UsePreviousAppDir=no
 PrivilegesRequired=admin
 
 ; Optional signing (configure in Inno: Tools -> Configure Sign Tools)
@@ -81,3 +82,38 @@ Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: de
 
 [Run]
 Filename: "{app}\{#MyAppExeName}"; Description: "Launch {#MyAppName}"; Flags: nowait postinstall skipifsilent
+
+[Code]
+const
+  UninstallKey = 'Software\Microsoft\Windows\CurrentVersion\Uninstall\{A2F2F07E-7A2F-4CE9-9D53-9E4F6B6F2F11}_is1';
+var
+  PreviousInstallDir: String;
+  LegacyInstallDirs: TArrayOfString;
+
+function InitializeSetup: Boolean;
+begin
+  Result := True;
+  if not RegQueryStringValue(HKLM64, UninstallKey, 'InstallLocation', PreviousInstallDir) then
+    if not RegQueryStringValue(HKLM32, UninstallKey, 'InstallLocation', PreviousInstallDir) then
+      if not RegQueryStringValue(HKCU64, UninstallKey, 'InstallLocation', PreviousInstallDir) then
+        RegQueryStringValue(HKCU32, UninstallKey, 'InstallLocation', PreviousInstallDir);
+  if PreviousInstallDir <> '' then
+  begin
+    LoadStringsFromFile(AddBackslash(PreviousInstallDir) + 'legacy-install-paths.txt', LegacyInstallDirs);
+    SetArrayLength(LegacyInstallDirs, GetArrayLength(LegacyInstallDirs) + 1);
+    LegacyInstallDirs[GetArrayLength(LegacyInstallDirs) - 1] := PreviousInstallDir;
+  end;
+end;
+
+procedure RegisterExtraCloseApplicationsResources;
+begin
+  if PreviousInstallDir <> '' then
+    RegisterExtraCloseApplicationsResource(False, AddBackslash(PreviousInstallDir) + '{#MyAppExeName}');
+end;
+
+procedure CurStepChanged(CurStep: TSetupStep);
+begin
+  if (CurStep = ssPostInstall) and (GetArrayLength(LegacyInstallDirs) > 0) then
+    if not SaveStringsToUTF8File(ExpandConstant('{app}\legacy-install-paths.txt'), LegacyInstallDirs, False) then
+      RaiseException('Could not retain the previous EchoPad data location. Original files have not been changed.');
+end;

@@ -1,5 +1,5 @@
 param(
-    [string]$Version = '1.1.0-dev.20260929.1',
+    [string]$Version = '1.1.0-dev.20260929.2',
     [switch]$SkipInstaller
 )
 $ErrorActionPreference = 'Stop'
@@ -17,6 +17,7 @@ try {
     if ($LASTEXITCODE -ne 0) { throw 'Publish failed.' }
     Copy-Item -LiteralPath (Join-Path $repoRoot 'README.md') -Destination $publishDir
     Copy-Item -LiteralPath (Join-Path $repoRoot 'docs') -Destination (Join-Path $publishDir 'docs') -Recurse
+    Copy-Item -LiteralPath (Join-Path $repoRoot 'graphics') -Destination (Join-Path $publishDir 'graphics') -Recurse
     $zip = Join-Path $releaseDir "EchoPad-$Version-win-x64-unsigned.zip"
     Compress-Archive -Path (Join-Path $publishDir '*') -DestinationPath $zip
     if (!$SkipInstaller) {

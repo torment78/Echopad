@@ -412,11 +412,7 @@ namespace Echopad.App
                         return;
 
                     // Output folder for committed clips
-                    var baseDir = Path.Combine(
-                        Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
-                        "Echopad",
-                        "Captures"
-                    );
+                    var baseDir = _settingsService.CapturesDirectory;
 
                     var stamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
                     var fileNoExt = $"Pad{pad.Index:00}_Echo_{stamp}";

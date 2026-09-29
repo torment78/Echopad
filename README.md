@@ -2,11 +2,13 @@
 
 EchoPad is a Windows audio pad sampler for live capture, sound clips, streaming and MIDI controllers. Its 4×4 grid can record the last **15 seconds** from either input, play imported audio, and route playback through local devices or VBAN.
 
+![EchoPad waveform artwork](graphics/echopad-preview.jpg)
+
 ![EchoPad pad states](docs/images/current/main-states.png)
 
 ## Unsigned Dev Release
 
-Version **1.1.0-dev.20260929.1** introduces tabbed settings, clearer pad states, profile selection and naming, improved hotkey/CC handling, PNG pad artwork, appearance controls and a manual update checker. This is the normal local/VBAN application; the separate VST edition is future work.
+Version **1.1.0-dev.20260929.2** adds the ElkaSoft install/data folders, automatic migration of older saves and media, installer downloads inside Settings, and matching horizontal/vertical waveform artwork. It includes the tabbed settings, clearer pad states, profile selection and naming, improved hotkey/CC handling, PNG pad artwork and appearance controls introduced in the previous development build. This is the normal local/VBAN application; the separate VST edition is future work.
 
 Download development builds from [GitHub Releases](https://github.com/torment78/Echopad/releases). Choose the Windows x64 installer or extract the complete self-contained ZIP and run `Echopad.App.exe`. This development release is unsigned and marked as a prerelease.
 
@@ -26,6 +28,8 @@ Each pad can have a stopped PNG and a playing PNG, with separate opacity and **F
 - [Application overview](docs/README.md): capture, playback, routing and saved data.
 - [Development release notes and validation](docs/RELEASE-NOTES.md).
 - [Regression checks](Echopad.Tests/README.md).
+- [Install locations and migration](docs/MIGRATION.md).
+- [Promotional graphics](graphics/README.md): portrait and landscape PNGs, plus a 373 KB horizontal preview.
 
 ## Build and test
 
@@ -39,9 +43,9 @@ dotnet run --project Echopad.Tests -c Release
 Build a tested, self-contained unsigned package with Inno Setup 6 installed:
 
 ```powershell
-./scripts/Build-UnsignedRelease.ps1 -Version 1.1.0-dev.20260929.1
+./scripts/Build-UnsignedRelease.ps1 -Version 1.1.0-dev.20260929.2
 ```
 
 Use `-SkipInstaller` for a ZIP-only package. Output is written under `artifacts/release/<version>`, with SHA-256 checksums. The script does not publish anything to GitHub.
 
-Settings, profiles and imported pad images live in `%LOCALAPPDATA%\Echopad`. Captures live in the user's Documents `Echopad\Captures` folder. Back up both locations and any separately referenced audio files before switching development builds.
+The installer defaults to `C:\Program Files\ElkaSoft\EchoPad`. Settings, profiles, pad images and new captures live in `%LOCALAPPDATA%\ElkaSoft\EchoPad`, so normal saving requires no administrator rights. First launch copies older EchoPad data and updates the imported media references while retaining the originals. Existing destination settings are preserved. See [migration and backups](docs/MIGRATION.md) for the legacy locations and recovery details.

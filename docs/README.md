@@ -22,7 +22,7 @@ Read the [illustrated setup and menu guide](SETUP.md) for every tab and control,
 
 Each input/output route can use Local or VBAN, or be disabled. Local and VBAN cannot run simultaneously on the same route. Other routes can use different transports.
 
-Settings and profiles are stored under `%LOCALAPPDATA%\Echopad`, along with managed PNG copies in `PadImages`. Captures are saved under Documents `Echopad\Captures`; imported audio remains referenced at its source path. See the [backup notes](SETUP.md#saved-data-and-backups) before moving data between machines.
+The app installs in `C:\Program Files\ElkaSoft\EchoPad`. Settings, profiles, managed PNG copies and captures are stored under `%LOCALAPPDATA%\ElkaSoft\EchoPad`. Older saves and owned media are copied automatically on first launch, keeping the originals. External audio and watched folders retain their paths. See [migration details](MIGRATION.md) and the [backup notes](SETUP.md#saved-data-and-backups) before moving data between machines.
 
 ## Development
 

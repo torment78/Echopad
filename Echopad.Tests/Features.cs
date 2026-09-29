@@ -108,9 +108,19 @@ static partial class Program
     static void RenderUpdateAvailable(SettingsWindow window,TabControl tabs)
     {
         tabs.SelectedItem=tabs.Items.Cast<TabItem>().First(t=>Equals(t.Tag,"Updates"));
-        typeof(SettingsWindow).GetMethod("ShowUpdateResult",BindingFlags.Instance|BindingFlags.NonPublic)!.Invoke(window,new object[]{new UpdateResult(true,"Example: a newer release is available.","Unsigned Dev Release (example version)","https://github.com/torment78/Echopad/releases/tag/example")});
+        var asset = TestInstallerAsset(new byte[] { 1, 2, 3 });
+        typeof(SettingsWindow).GetMethod("ShowUpdateResult",BindingFlags.Instance|BindingFlags.NonPublic)!.Invoke(window,new object[]{new UpdateResult(true,"Example: a newer release is ready to download and install.","Unsigned Dev Release (example version)","https://github.com/torment78/Echopad/releases/tag/example",asset)});
         Render((FrameworkElement)window.Content,"settings-Updates-available",1010,720);
         Check(((Button)window.FindName("OpenReleaseButton")).Visibility==Visibility.Visible,"available update exposes release link");
+        Check(((Button)window.FindName("UpdateCheckButton")).Content?.ToString()=="Download and install" &&
+            ((Button)window.FindName("RecheckUpdateButton")).Visibility==Visibility.Visible,"verified installer exposes download/install and check-again actions");
+        ((ProgressBar)window.FindName("UpdateDownloadProgress")).Visibility=Visibility.Visible;
+        ((Button)window.FindName("UpdateCheckButton")).IsEnabled=false;
+        ((Button)window.FindName("RecheckUpdateButton")).IsEnabled=false;
+        ((ProgressBar)window.FindName("UpdateDownloadProgress")).Value=63;
+        ((Button)window.FindName("CancelUpdateButton")).Visibility=Visibility.Visible;
+        ((TextBlock)window.FindName("UpdateStatus")).Text="Example: downloading installer… 63% (36.8 / 58.4 MB)";
+        Render((FrameworkElement)window.Content,"settings-Updates-downloading",1010,720);
     }
     static void CaptureAndWaveformChecks(SettingsService settings)
     {

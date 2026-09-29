@@ -14,6 +14,15 @@ public partial class MainWindow
     private void PadGutter_SizeChanged(object sender, SizeChangedEventArgs e) => UpdatePadHostSquare();
     public bool HasMidiInput => _midiIn != null;
     public void CancelMidiLearn() => _pendingMidiLearn = null;
+    internal async Task WaitForPendingCapturesAsync(CancellationToken cancellationToken)
+    {
+        var deadline = DateTime.UtcNow.AddSeconds(30);
+        while (DataContext is MainViewModel vm && vm.Pads.Any(p => p.IsBusy))
+        {
+            if (DateTime.UtcNow >= deadline) throw new InvalidOperationException("A pad is still saving audio. Wait for it to finish and try the update again.");
+            await Task.Delay(50, cancellationToken);
+        }
+    }
     public string ActiveProfileName => _profiles?.GetProfile(ActiveProfileIndex).Name ?? $"Profile {ActiveProfileIndex:00}";
 
     private void ShowProfileDropdown(FrameworkElement anchor)

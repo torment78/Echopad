@@ -18,6 +18,7 @@ namespace Echopad.App.Settings
         private readonly IMidiDeviceProvider _midiProvider;
 
         public GlobalSettings Settings { get; }
+        public string UpdatesDirectory => System.IO.Path.Combine(_settingsService.DataDirectory, "Updates");
 
         public ObservableCollection<DeviceOption> AudioInputs { get; } = new();
         public ObservableCollection<DeviceOption> AudioOutputs { get; } = new();

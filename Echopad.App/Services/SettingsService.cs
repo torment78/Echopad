@@ -21,54 +21,19 @@ namespace Echopad.App.Services
         };
 
         public string DataDirectory { get; }
+        public string CapturesDirectory => Path.Combine(DataDirectory, "Captures");
 
         public SettingsService(string? dataDirectory = null)
         {
-            // =====================================================
-            // OLD (breaks under Program Files)
-            // _settingsPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "echopad.settings.json");
-            // =====================================================
-
-            // =====================================================
-            // NEW: LocalAppData (writeable)
-            // %LOCALAPPDATA%\Echopad\echopad.settings.json
-            // =====================================================
-            var dir = dataDirectory ?? Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                "Echopad"
-            );
+            var dir = dataDirectory ?? AppPaths.RootDir;
 
             Directory.CreateDirectory(dir);
             DataDirectory = dir;
 
             _settingsPath = Path.Combine(dir, "echopad.settings.json");
 
-            // OPTIONAL: one-time migration from old exe-folder settings (keeps old users)
-            if (dataDirectory == null) TryMigrateFromExeFolder(dir);
-        }
-
-        // =====================================================
-        // NEW: settings migration helper
-        // =====================================================
-        private void TryMigrateFromExeFolder(string newDir)
-        {
-            try
-            {
-                // If new settings already exists, do nothing
-                if (File.Exists(_settingsPath))
-                    return;
-
-                var oldPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "echopad.settings.json");
-                if (!File.Exists(oldPath))
-                    return;
-
-                // Copy old -> new
-                File.Copy(oldPath, _settingsPath, overwrite: false);
-            }
-            catch
-            {
-                // ignore migration failure (never block startup)
-            }
+            // Injected test directories never inspect or migrate the real user's data.
+            if (dataDirectory == null) LegacyDataMigration.MigrateDefault(dir);
         }
 
         public GlobalSettings Load()

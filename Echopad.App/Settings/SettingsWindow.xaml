@@ -565,8 +565,22 @@
             <TextBlock Text="EchoPad updates" FontSize="22" FontWeight="SemiBold"/>
             <TextBlock x:Name="InstalledVersionText" Margin="0,12,0,5"/>
             <TextBlock x:Name="ReleaseChannelText" Style="{StaticResource Hint}"/>
-            <TextBlock Text="Check GitHub for a newer version. Downloads open on the release page so you can read the notes and choose when to install." Style="{StaticResource Hint}" Margin="0,16,0,18"/>
-            <Button x:Name="UpdateCheckButton" Content="Check for updates" Click="CheckUpdates_Click" HorizontalAlignment="Left" Padding="18,10"/>
+            <TextBlock Text="Check for a newer version, then download and install when ready. EchoPad saves your settings and closes once Windows starts the installer." Style="{StaticResource Hint}" Margin="0,16,0,18"/>
+            <StackPanel Orientation="Horizontal">
+              <Button x:Name="UpdateCheckButton" Content="Check for updates" Click="CheckUpdates_Click" Padding="18,10"/>
+              <Button x:Name="RecheckUpdateButton" Content="Check again" Click="RecheckUpdates_Click" Margin="10,0,0,0" Visibility="Collapsed"/>
+            </StackPanel>
+            <ProgressBar x:Name="UpdateDownloadProgress" Minimum="0" Maximum="100" Height="8" Margin="0,16,0,0" Visibility="Collapsed" Foreground="#FFBB56" Background="#30343C">
+              <ProgressBar.Template>
+                <ControlTemplate TargetType="ProgressBar">
+                  <Grid>
+                    <Border x:Name="PART_Track" Background="{TemplateBinding Background}" CornerRadius="4"/>
+                    <Border x:Name="PART_Indicator" Background="{TemplateBinding Foreground}" CornerRadius="4" HorizontalAlignment="Left"/>
+                  </Grid>
+                </ControlTemplate>
+              </ProgressBar.Template>
+            </ProgressBar>
+            <Button x:Name="CancelUpdateButton" Content="Cancel download" Click="CancelUpdate_Click" HorizontalAlignment="Left" Margin="0,10,0,0" Visibility="Collapsed"/>
             <TextBlock x:Name="UpdateStatus" Text="Check whenever you are ready." Style="{StaticResource Hint}" Margin="0,18,0,8"/>
             <TextBlock x:Name="UpdateReleaseName" FontWeight="SemiBold" FontSize="16" TextWrapping="Wrap" Foreground="#FFBB56"/>
             <Button x:Name="OpenReleaseButton" Content="Open release page" Click="OpenRelease_Click" HorizontalAlignment="Left" Margin="0,14,0,0" Visibility="Collapsed"/>

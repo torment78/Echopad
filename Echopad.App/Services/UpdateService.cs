@@ -33,7 +33,8 @@ public sealed record ReleaseVersion(Version Number, string Suffix) : IComparable
     }
 }
 
-public sealed record UpdateResult(bool Available, string Message, string? ReleaseName = null, string? ReleaseUrl = null);
+public sealed record InstallerAsset(string Tag, string FileName, string DownloadUrl, string Sha256, long Size);
+public sealed record UpdateResult(bool Available, string Message, string? ReleaseName = null, string? ReleaseUrl = null, InstallerAsset? Installer = null);
 
 public sealed class UpdateService
 {
@@ -61,7 +62,7 @@ public sealed class UpdateService
                 return new(false, $"Could not read releases (HTTP {(int)response.StatusCode}). Please try again later.");
             using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false));
             if (document.RootElement.ValueKind != JsonValueKind.Array) return new(false, "The release feed returned an unexpected response.");
-            ReleaseVersion? newest = null; string? name = null, url = null;
+            ReleaseVersion? newest = null; string? name = null, url = null; InstallerAsset? installer = null;
             foreach (var release in document.RootElement.EnumerateArray())
             {
                 if (release.ValueKind != JsonValueKind.Object || Flag(release, "draft")) continue;
@@ -71,15 +72,41 @@ public sealed class UpdateService
                 if (!IsReleaseUrl(releaseUrl) || (newest != null && version.CompareTo(newest) <= 0)) continue;
                 newest = version; url = releaseUrl;
                 name = $"{Text(release, "name") ?? "EchoPad"} ({Text(release, "tag_name")})";
+                installer = FindInstaller(release);
             }
             if (newest == null) return new(false, "No versioned releases are available for this build yet.");
             return newest.CompareTo(installed) > 0
-                ? new(true, "A newer EchoPad release is available.", name, url)
+                ? new(true, installer != null ? "A newer EchoPad release is ready to download and install." :
+                    "A newer release is available. No compatible verified installer is attached; open the release page for downloads.", name, url, installer)
                 : new(false, "You have the newest available version for this release channel.");
         }
         catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested) { return new(false, "The update check timed out. Please try again."); }
         catch (HttpRequestException) { return new(false, "Could not connect to GitHub. Check your connection and try again."); }
         catch (JsonException) { return new(false, "The release feed could not be read. Please try again later."); }
+    }
+    private static InstallerAsset? FindInstaller(JsonElement release)
+    {
+        string? tag = Text(release, "tag_name");
+        if (tag == null || !release.TryGetProperty("assets", out var assets) || assets.ValueKind != JsonValueKind.Array) return null;
+        foreach (var asset in assets.EnumerateArray())
+        {
+            if (asset.ValueKind != JsonValueKind.Object || Text(asset, "state") != "uploaded" ||
+                !asset.TryGetProperty("size", out var size) || size.ValueKind != JsonValueKind.Number || !size.TryGetInt64(out long bytes)) continue;
+            string? name = Text(asset, "name"), url = Text(asset, "browser_download_url"), digest = Text(asset, "digest");
+            if (name == null || url == null || digest == null || !digest.StartsWith("sha256:", StringComparison.OrdinalIgnoreCase)) continue;
+            var installer = new InstallerAsset(tag, name, url, digest[7..], bytes);
+            if (IsInstallerAsset(installer)) return installer;
+        }
+        return null;
+    }
+    public static bool IsInstallerAsset(InstallerAsset asset)
+    {
+        if (!Regex.IsMatch(asset.Tag, @"\A[vV]?\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?\z") ||
+            asset.Size <= 0 || asset.Size > 512L * 1024 * 1024 || !Regex.IsMatch(asset.Sha256, @"\A[0-9a-fA-F]{64}\z")) return false;
+        string prefix = "EchoPad-" + asset.Tag.TrimStart('v', 'V');
+        if (asset.FileName != prefix + "-Unsigned-Setup.exe" && asset.FileName != prefix + "-Setup.exe") return false;
+        string expected = RepositoryUrl + "/releases/download/" + Uri.EscapeDataString(asset.Tag) + "/" + Uri.EscapeDataString(asset.FileName);
+        return string.Equals(asset.DownloadUrl, expected, StringComparison.Ordinal);
     }
     private static bool Flag(JsonElement element, string property) => element.TryGetProperty(property, out var value) && value.ValueKind == JsonValueKind.True;
     private static string? Text(JsonElement element, string property) => element.TryGetProperty(property, out var value) && value.ValueKind == JsonValueKind.String ? value.GetString() : null;

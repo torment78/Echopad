@@ -29,8 +29,10 @@ static partial class Program
             var app=new Echopad.App.App();app.InitializeComponent();app.ShutdownMode=ShutdownMode.OnExplicitShutdown;
             var dir=Path.Combine(AppContext.BaseDirectory,"test-data",Guid.NewGuid().ToString("N"));
             var settings=new SettingsService(dir);
+            MigrationChecks(Path.Combine(dir, "migration-fixtures"));
             var devices=new Devices();
             UpdateChecks();
+            InstallerUpdateChecks(Path.Combine(dir, "update-fixtures")).GetAwaiter().GetResult();
             GraphicsChecks(settings);
             CaptureAndWaveformChecks(settings);
             CopyChecks();

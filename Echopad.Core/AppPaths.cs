@@ -8,14 +8,14 @@ namespace Echopad.Core
 {
     public static class AppPaths
     {
-        // "Echopad" folder inside LocalAppData
+        // Writable user data, independent of the Program Files installation.
         public static string RootDir
         {
             get
             {
                 var root = Path.Combine(
                     Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                    "Echopad"
+                    "ElkaSoft", "EchoPad"
                 );
                 Directory.CreateDirectory(root);
                 return root;
@@ -23,7 +23,7 @@ namespace Echopad.Core
         }
 
         // Settings files (centralized)
-        public static string SettingsJsonPath => Path.Combine(RootDir, "settings.json");
+        public static string SettingsJsonPath => Path.Combine(RootDir, "echopad.settings.json");
         public static string ProfilesJsonPath => Path.Combine(RootDir, "profiles.json");
 
         // Optional: logs / captures / etc

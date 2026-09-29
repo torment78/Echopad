@@ -63,7 +63,7 @@ public partial class SettingsWindow : Window
         for (int i = 0; i < VisualTreeHelper.GetChildrenCount(node); i++) if (HasErrors(VisualTreeHelper.GetChild(node, i))) return true;
         return false;
     }
-    private void OnClosing(object? sender, CancelEventArgs e) { if (!Commit()) e.Cancel = true; }
+    private void OnClosing(object? sender, CancelEventArgs e) { if (!_closingForUpdate && !Commit()) e.Cancel = true; }
     private void Save_Click(object sender, RoutedEventArgs e) => Commit();
     private void Close_Click(object sender, RoutedEventArgs e) => Close();
     private void ResetAppearance_Click(object sender, RoutedEventArgs e) => _vm.ResetAppearance();
