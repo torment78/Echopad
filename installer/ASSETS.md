@@ -7,7 +7,7 @@ The installer follows the ElkaSoft family layout used by Throttle, VBAN Stream a
 - `Assets/ElkaSoft.png`: unchanged ElkaSoft brand image reused from VBAN Stream's installer assets.
 - `Assets/Ecopadc.ico`: existing installer file icon.
 
-The previous generic sidebar/header images are no longer selected by the installer. Original application and installer ICO files remain unchanged. No new AI artwork was generated for this installer; it uses the approved [EchoPad graphics](../graphics/README.md).
+The previous generic sidebar/header images are no longer selected by the installer. Original application and installer ICO files remain unchanged. The installer uses the approved [EchoPad graphics](../graphics/README.md).
 
 For layout inspection without installing EchoPad, compile with Inno Setup 6.6 or newer:
 
