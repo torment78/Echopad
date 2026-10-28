@@ -15,7 +15,7 @@ Also included from the preceding development builds:
 
 - Installer now defaults to `C:\Program Files\ElkaSoft\EchoPad`, including upgrades from the old installation folder.
 - Writable data now lives in `%LOCALAPPDATA%\ElkaSoft\EchoPad`. First launch copies older settings, profiles, pad images and captures, rewrites imported media references, and keeps originals. Existing destination settings win; conflicting media are retained under distinct names. Failed migrations report an error and can be retried.
-- Matching portrait/landscape waveform graphics retain the pad-icon design, with a 373,410-byte horizontal preview. Artwork and prompts ship in the repository and application packages.
+- Matching portrait/landscape waveform graphics retain the pad-icon design, with a 373,410-byte horizontal preview. Artwork ships in the repository and application packages.
 - The installer preserves old custom install locations for data discovery. The application migrates as the Windows user who launches it.
 - Settings can now download the matching installer, show progress/cancellation, verify its SHA-256 and size, save settings and wait for pending captures, launch the installer and close EchoPad. Failed downloads, canceled Windows prompts and failed launches keep the app open. Older builds need one manual installation to gain this workflow.
 
@@ -54,7 +54,7 @@ The Windows Release regression harness passes **141 checks**, including:
 
 UI examples use generated pad artwork and simulated devices/meter levels; the trim illustration is a supplied screenshot from a running EchoPad session. The native tray resource loads in a smoke check, and window lifecycle tests use an injected tray backend. Startup tests use a fake registry store. A real Windows sign-in and live tray interaction are not part of the automated checks. Physical audio interfaces, real MIDI controllers and a remote VBAN receiver still require a user audition.
 
-Both the installer and a non-installing branding preview compile. Live wizard visual inspection was blocked by the desktop tool's Windows sandbox startup error; the shipped portrait artwork and rendered settings pages were visually reviewed.
+Both the installer and a non-installing branding preview compile. The live wizard layout has not been visually verified; the shipped portrait artwork and rendered settings pages were visually reviewed.
 
 ## Downloads and signing
 
